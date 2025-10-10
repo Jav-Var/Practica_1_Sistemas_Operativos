@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <unistd.h>
+#include <sys/types.h>
 
 #define BUCKETS_HEADER_SIZE 4096
 #define ARRAYS_HEADER_SIZE 4096

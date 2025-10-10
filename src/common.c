@@ -1,3 +1,6 @@
+
+#define _XOPEN_SOURCE 500
+
 #include "common.h"
 #include <errno.h>
 #include <string.h>
@@ -7,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <unistd.h>
 
 ssize_t safe_pread(int fd, void *buf, size_t count, off_t offset) {
     ssize_t total = 0;
