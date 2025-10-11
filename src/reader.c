@@ -26,47 +26,63 @@ void index_close(index_handle_t *h) {
     if (h->buckets_fd >= 0) close(h->buckets_fd);
     if (h->arrays_fd >= 0) close(h->arrays_fd);
     h->buckets_fd = h->arrays_fd = -1;
+    h->num_buckets = 0;
+    h->hash_seed = 0;
 }
 
 int index_lookup(index_handle_t *h, const char *key, offset_t **out_offsets, uint32_t *out_count) {
-    if (!h || !key) return -1;
+    if (!h || !key || !out_offsets || !out_count) return -1;
     *out_offsets = NULL;
     *out_count = 0;
+
     uint64_t hval = hash_key_prefix20(key, strlen(key), h->hash_seed);
     uint64_t mask = h->num_buckets - 1;
     uint64_t bucket = bucket_id_from_hash(hval, mask);
     offset_t head = buckets_read_head(h->buckets_fd, h->num_buckets, bucket);
     if (head == 0) return 0;
-    /* dynamic array */
+
+    /* dynamic array for results */
     uint32_t cap = 16;
     uint32_t cnt = 0;
     offset_t *results = malloc(sizeof(offset_t) * cap);
+    if (!results) return -1;
+
     offset_t cur = head;
     while (cur != 0) {
-        char *node_key = NULL;
-        offset_t *offs = NULL;
-        uint32_t list_len = 0;
-        offset_t next = 0;
-        if (arrays_read_node_full(h->arrays_fd, cur, &node_key, &offs, &list_len, &next) != 0) {
-            /* error reading node -> break */
+        arrays_node_t node = {0, NULL, 0, NULL, 0};
+        if (arrays_read_node_full(h->arrays_fd, cur, &node) != 0) {
+            /* error reading node -> stop traversal and return what we have */
             break;
         }
-        if (node_key) {
-            /* compare exact (case-sensitive). If you want case-insensitive, modify here. */
-            if (strcmp(node_key, key) == 0) {
-                for (uint32_t i = 0; i < list_len; ++i) {
+
+        offset_t next = node.next_ptr; /* save next before freeing node */
+
+        if (node.key) {
+            /* case-sensitive comparison; change if you want case-insensitive */
+            if (strcmp(node.key, key) == 0) {
+                for (uint32_t i = 0; i < node.list_len; ++i) {
                     if (cnt >= cap) {
-                        cap *= 2;
-                        results = realloc(results, sizeof(offset_t) * cap);
+                        uint32_t new_cap = cap * 2;
+                        offset_t *tmp = realloc(results, sizeof(offset_t) * new_cap);
+                        if (!tmp) {
+                            /* allocation failure: clean up and return error */
+                            arrays_free_node(&node);
+                            free(results);
+                            return -1;
+                        }
+                        results = tmp;
+                        cap = new_cap;
                     }
-                    results[cnt++] = offs[i];
+                    results[cnt++] = node.offsets[i];
                 }
             }
-            free(node_key);
         }
-        if (offs) free(offs);
+
+        /* free node buffers */
+        arrays_free_node(&node);
         cur = next;
     }
+
     if (cnt == 0) {
         free(results);
         *out_offsets = NULL;

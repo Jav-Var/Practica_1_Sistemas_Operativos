@@ -41,78 +41,136 @@ size_t arrays_calc_node_size(uint16_t key_len, uint32_t list_len) {
 }
 
 /* append node: serialize into a buffer then write at EOF */
-offset_t arrays_append_node(int fd, const char *key, const offset_t *record_offsets_list, uint32_t list_len, offset_t next_ptr) {
-    uint16_t key_len = (uint16_t)strlen(key);
+offset_t arrays_append_node(int fd, const arrays_node_t *node) {
+    if (!node || !node->key) return 0;
+    if (node->key_len != (uint16_t)strlen(node->key)) {
+        /* ensure key_len consistent */
+        /* If mismatch, use strlen */
+    }
+    uint16_t key_len = (uint16_t)strlen(node->key);
+    if ((size_t)key_len != strlen(node->key)) {
+        /* key too long for uint16 */
+        return 0;
+    }
+    uint32_t list_len = node->list_len;
+
     size_t node_size = arrays_calc_node_size(key_len, list_len);
     unsigned char *buf = malloc(node_size);
     if (!buf) return 0;
     size_t pos = 0;
+
+    /* key_len */
     le_write_u16(buf + pos, key_len);
-    pos += 2;
-    memcpy(buf + pos, key, key_len);
+    pos += sizeof(uint16_t);
+
+    /* key bytes (no NUL on disk) */
+    memcpy(buf + pos, node->key, key_len);
     pos += key_len;
+
+    /* list_len */
     le_write_u32(buf + pos, list_len);
-    pos += 4;
+    pos += sizeof(uint32_t);
+
+    /* offsets array */
     for (uint32_t i = 0; i < list_len; ++i) {
-        le_write_u64(buf + pos, record_offsets_list[i]);
-        pos += 8;
+        le_write_u64(buf + pos, node->offsets[i]);
+        pos += sizeof(uint64_t);
     }
-    le_write_u64(buf + pos, next_ptr);
-    pos += 8;
+
+    /* next_ptr */
+    le_write_u64(buf + pos, node->next_ptr);
+    pos += sizeof(uint64_t);
+
     /* compute offset at EOF */
     off_t new_off = lseek(fd, 0, SEEK_END);
     if (new_off == (off_t)-1) {
         free(buf);
         return 0;
     }
-    /* ensure we don't write into header area 0: if file empty? arrays_create wrote header */
-    if (new_off < ARRAYS_HEADER_SIZE) new_off = ARRAYS_HEADER_SIZE;
+    /* ensure we don't write into header area */
+    if (new_off < (off_t)ARRAYS_HEADER_SIZE) new_off = (off_t)ARRAYS_HEADER_SIZE;
+
     if (safe_pwrite(fd, buf, node_size, new_off) != (ssize_t)node_size) {
         free(buf);
         return 0;
     }
+
     free(buf);
-    /* optional fsync if durability required */
+    /* optional fsync for durability */
     return (offset_t)new_off;
 }
 
-int arrays_read_node_full(int fd, offset_t node_off, char **key_out, offset_t **offsets_out, uint32_t *list_len_out, offset_t *next_ptr_out) {
-    /* read key_len first (2 bytes) */
-    unsigned char tmp2[2];
-    if (safe_pread(fd, tmp2, 2, node_off) != 2) return -1;
+// reads the node data in an offset to a struct (arrays_node_t)
+int arrays_read_node_full(int fd, offset_t node_off, arrays_node_t *node) {
+    if (!node) return -1;
+    unsigned char tmp2[sizeof(uint16_t)];
+    if (safe_pread(fd, tmp2, sizeof(uint16_t), node_off) != (ssize_t)sizeof(uint16_t)) return -1;
     uint16_t key_len = le_read_u16(tmp2);
-    /* read next 4 + key_len bytes to get key and list_len */
-    size_t head_read = (size_t)key_len + 4;
-    unsigned char *buf = malloc(head_read);
-    if (!buf) return -1;
-    if (safe_pread(fd, buf, head_read, node_off + 2) != (ssize_t)head_read) {
-        free(buf); return -1;
+
+    /* read key bytes and list_len (key_len + sizeof(list_len)) */
+    size_t head_read = (size_t)key_len + sizeof(uint32_t);
+    unsigned char *headbuf = malloc(head_read);
+    if (!headbuf) return -1;
+    if (safe_pread(fd, headbuf, head_read, node_off + sizeof(uint16_t)) != (ssize_t)head_read) {
+        free(headbuf);
+        return -1;
     }
-    char *key = malloc(key_len + 1);
-    if (!key) { free(buf); return -1; }
-    memcpy(key, buf, key_len); key[key_len] = '\0';
-    uint32_t list_len = le_read_u32(buf + key_len);
-    free(buf);
+
+    /* allocate key (NUL-terminated) */
+    char *key = malloc((size_t)key_len + 1);
+    if (!key) { free(headbuf); return -1; }
+    memcpy(key, headbuf, key_len);
+    key[key_len] = '\0';
+
+    uint32_t list_len = le_read_u32(headbuf + key_len);
+    free(headbuf);
+
     /* read offsets and next_ptr */
-    size_t rest = (size_t)list_len * 8 + 8;
-    unsigned char *restbuf = malloc(rest);
-    if (!restbuf) { free(key); return -1; }
-    if (safe_pread(fd, restbuf, rest, node_off + 2 + key_len + 4) != (ssize_t)rest) {
-        free(key); free(restbuf); return -1;
+    size_t rest_bytes = (size_t)list_len * sizeof(uint64_t) + sizeof(uint64_t);
+    unsigned char *restbuf = NULL;
+    if (rest_bytes > 0) {
+        restbuf = malloc(rest_bytes);
+        if (!restbuf) { free(key); return -1; }
+        if (safe_pread(fd, restbuf, rest_bytes, node_off + sizeof(uint16_t) + key_len + sizeof(uint32_t)) != (ssize_t)rest_bytes) {
+            free(key); free(restbuf); return -1;
+        }
+    } else {
+        /* Shouldn't happen (list_len == 0 means rest_bytes == 8 for next_ptr),
+           but handle generically */
+        restbuf = malloc(sizeof(uint64_t));
+        if (!restbuf) { free(key); return -1; }
+        if (safe_pread(fd, restbuf, sizeof(uint64_t), node_off + sizeof(uint16_t) + key_len + sizeof(uint32_t)) != (ssize_t)sizeof(uint64_t)) {
+            free(key); free(restbuf); return -1;
+        }
     }
+
     offset_t *offsets = NULL;
     if (list_len > 0) {
         offsets = malloc(sizeof(offset_t) * list_len);
         if (!offsets) { free(key); free(restbuf); return -1; }
         for (uint32_t i = 0; i < list_len; ++i) {
-            offsets[i] = le_read_u64(restbuf + i * 8);
+            offsets[i] = le_read_u64(restbuf + (size_t)i * sizeof(uint64_t));
         }
     }
-    offset_t next = le_read_u64(restbuf + (size_t)list_len * 8);
+
+    offset_t next = le_read_u64(restbuf + (size_t)list_len * sizeof(uint64_t));
     free(restbuf);
-    *key_out = key;
-    *offsets_out = offsets;
-    *list_len_out = list_len;
-    *next_ptr_out = next;
+
+    /* fill node struct */
+    node->key_len = key_len;
+    node->key = key;
+    node->list_len = list_len;
+    node->offsets = offsets;
+    node->next_ptr = next;
     return 0;
+}
+
+
+void arrays_free_node(arrays_node_t *node) {
+    if (!node) return;
+    if (node->key) { free(node->key); node->key = NULL; }
+    if (node->offsets) { free(node->offsets); node->offsets = NULL; }
+    node->key_len = 0;
+    node->list_len = 0;
+    node->next_ptr = 0;
 }

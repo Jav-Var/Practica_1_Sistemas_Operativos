@@ -11,6 +11,7 @@
    num_buckets: number of buckets (must be power of two)
    hash_seed: seed for hash_key prefix
 */
+
 int build_index_stream(const char *csv_path, const char *out_dir, const char *index_name, uint64_t num_buckets, uint64_t hash_seed);
 
 /* Build both indices title and author */

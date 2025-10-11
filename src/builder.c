@@ -10,9 +10,10 @@
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <time.h>
 
 /* Extract CSV field by index (0-based), support quoted fields with double quotes.
-   The returned pointer is malloc'd and must be freed.
+   The returned pointer is malloc'd and must be freed (or ownership transferred).
 */
 static char *csv_get_field_copy(const char *line, int field_idx) {
     const char *p = line;
@@ -37,7 +38,7 @@ static char *csv_get_field_copy(const char *line, int field_idx) {
         }
     }
     /* now extract field at idx == field_idx */
-    if (!*p) return strdup("");
+    if (!*p) return xstrdup("");
     char *out = NULL;
     if (*p == '"') {
         p++;
@@ -85,7 +86,7 @@ static int get_field_index_for(const char *index_name) {
 }
 
 /* Build single index in streaming mode: for each CSV row (after header),
-   read the key, get current file byte offset for the line, create a node
+   read the key, get current file byte offset for the line, create an arrays_node_t
    with list_len=1 and next_ptr = old_head, append and update bucket head.
 */
 int build_index_stream(const char *csv_path, const char *out_dir, const char *index_name, uint64_t num_buckets, uint64_t hash_seed) {
@@ -105,6 +106,7 @@ int build_index_stream(const char *csv_path, const char *out_dir, const char *in
         fprintf(stderr, "Failed to create arrays file %s\n", arrays_path);
         return -1;
     }
+
     int bfd = buckets_open_readwrite(buckets_path, NULL, NULL);
     if (bfd < 0) { fprintf(stderr,"open buckets failed\n"); return -1; }
     int afd = arrays_open(arrays_path);
@@ -117,16 +119,17 @@ int build_index_stream(const char *csv_path, const char *out_dir, const char *in
     off_t line_off = ftello(f);
     char *line = NULL;
     size_t llen = 0;
-    ssize_t read;
-    read = getline(&line, &llen, f);
-    if (read <= 0) { fclose(f); close(bfd); close(afd); if (line) free(line); return -1; }
+    ssize_t nread;
+    nread = getline(&line, &llen, f);
+    if (nread <= 0) { fclose(f); close(bfd); close(afd); if (line) free(line); return -1; }
 
     /* iterate rows */
     while (1) {
         line_off = ftello(f);
-        read = getline(&line, &llen, f);
-        if (read <= 0) break;
-        /* extract key field */
+        nread = getline(&line, &llen, f);
+        if (nread <= 0) break;
+
+        /* extract key field (malloc'd) */
         char *field = csv_get_field_copy(line, field_idx);
         if (!field) continue;
         trim_inplace(field);
@@ -140,22 +143,38 @@ int build_index_stream(const char *csv_path, const char *out_dir, const char *in
         /* read old head */
         offset_t old_head = buckets_read_head(bfd, num_buckets, bucket);
 
-        /* prepare offsets array with single element = line_off */
-        offset_t rec_offs[1];
-        rec_offs[0] = (offset_t)line_off;
-
-        /* append node with next_ptr = old_head */
-        offset_t new_node_off = arrays_append_node(afd, field, rec_offs, 1, old_head);
-        if (new_node_off == 0) {
-            fprintf(stderr, "failed append node\n");
-            free(field);
+        /* prepare arrays_node_t with ownership of 'field' */
+        arrays_node_t node;
+        node.key_len = (uint16_t)strlen(field);
+        node.key = field; /* take ownership: arrays_free_node will free it */
+        node.list_len = 1;
+        node.offsets = malloc(sizeof(offset_t) * 1);
+        if (!node.offsets) {
+            /* cleanup and continue */
+            arrays_free_node(&node); /* will free node.key */
+            fprintf(stderr, "malloc failed for offsets\n");
             continue;
         }
+        node.offsets[0] = (offset_t)line_off;
+        node.next_ptr = old_head;
+
+        /* append node with next_ptr = old_head */
+        offset_t new_node_off = arrays_append_node(afd, &node);
+        if (new_node_off == 0) {
+            fprintf(stderr, "failed append node\n");
+            /* free node memory (arrays_free_node frees node.key and node.offsets) */
+            arrays_free_node(&node);
+            continue;
+        }
+
+        /* after append we must free the node (arrays_append_node does not take ownership) */
+        arrays_free_node(&node);
+
         /* write bucket head */
         if (buckets_write_head(bfd, num_buckets, bucket, new_node_off) != 0) {
             fprintf(stderr, "failed write bucket head\n");
+            /* continue anyway */
         }
-        free(field);
     }
 
     if (line) free(line);
