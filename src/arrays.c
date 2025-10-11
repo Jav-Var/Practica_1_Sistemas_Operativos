@@ -10,10 +10,13 @@
 /* create arrays.dat and reserve header bytes */
 int arrays_create(const char *path) {
     int fd = open(path, O_CREAT | O_TRUNC | O_RDWR, 0644);
+    /* O_CREAT: creates the file if it doesn't exist.
+     * O_TRUNC: if it exists, it truncates it to length 0 (deletes its content).
+     * O_RDWR: opens it in read/write mode (necessary for pread/pwrite).
+     */
     if (fd < 0) return -1;
     unsigned char header[ARRAYS_HEADER_SIZE];
     memset(header, 0, ARRAYS_HEADER_SIZE);
-    /* could write metadata if needed */
     if (safe_pwrite(fd, header, ARRAYS_HEADER_SIZE, 0) != (ssize_t)ARRAYS_HEADER_SIZE) {
         close(fd);
         return -1;
@@ -28,12 +31,17 @@ int arrays_open(const char *path) {
     return fd;
 }
 
+/* returns the size of a node with a key (string) of size key_len, and a list of offsets of size list_len */
 size_t arrays_calc_node_size(uint16_t key_len, uint32_t list_len) {
-    return 2 + (size_t)key_len + 4 + ((size_t)list_len) * 8 + 8;
+    return sizeof(uint16_t)                  // key_len
+         + (size_t)key_len                   // key bytes
+         + sizeof(uint32_t)                  // list_len
+         + (size_t)list_len * sizeof(uint64_t) // offsets[]
+         + sizeof(uint64_t);                 // next_ptr
 }
 
 /* append node: serialize into a buffer then write at EOF */
-offset_t arrays_append_node(int fd, const char *key, const offset_t *record_offsets, uint32_t list_len, offset_t next_ptr) {
+offset_t arrays_append_node(int fd, const char *key, const offset_t *record_offsets_list, uint32_t list_len, offset_t next_ptr) {
     uint16_t key_len = (uint16_t)strlen(key);
     size_t node_size = arrays_calc_node_size(key_len, list_len);
     unsigned char *buf = malloc(node_size);
@@ -46,7 +54,7 @@ offset_t arrays_append_node(int fd, const char *key, const offset_t *record_offs
     le_write_u32(buf + pos, list_len);
     pos += 4;
     for (uint32_t i = 0; i < list_len; ++i) {
-        le_write_u64(buf + pos, record_offsets[i]);
+        le_write_u64(buf + pos, record_offsets_list[i]);
         pos += 8;
     }
     le_write_u64(buf + pos, next_ptr);
