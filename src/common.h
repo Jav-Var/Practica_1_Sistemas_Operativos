@@ -12,6 +12,9 @@
 #define INDEX_MAGIC "IDX1"
 #define INDEX_VERSION 1
 
+#define CSV_PATH "data/dataset/books_data.csv"
+#define INDEX_DIR "data/index"
+
 typedef uint64_t offset_t;
 
 /* safe IO wrappers */

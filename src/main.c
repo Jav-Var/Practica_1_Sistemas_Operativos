@@ -1,38 +1,71 @@
-
-#define  _GNU_SOURCE
+#define _GNU_SOURCE
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <unistd.h>   /* for access() */
+#include <errno.h>
 
 #include "util.h"
+#include "builder.h"
 #include "reader.h"
+#include "common.h"
 
 int main(void) {
-    const char *csv_path = "data/dataset/books_data.csv";
-    const char *out_dir = "data/index";
-    const char *query_title = "The Little Prince Macmillan Collectors Library";
+    uint64_t hash_seed = 0x12345678abcdefULL; // 
 
-    /* Paths to prebuilt index files */
+    /* create output dir if not exists */
+    struct stat st = {0};
+    if (stat(INDEX_DIR, &st) == -1) {
+        if (mkdir(INDEX_DIR, 0755) != 0) {
+            perror("mkdir out_dir");
+            return 1;
+        }
+    }
+
+    /* choose num_buckets (power of two). For demo pick 4096 */
+    uint64_t num_buckets_title = next_pow2(4096);
+    uint64_t num_buckets_author = next_pow2(4096);
+
+    /* prepare index file paths */
     char title_buckets[1024], title_arrays[1024];
-    snprintf(title_buckets, sizeof(title_buckets), "%s/%s_buckets.dat", out_dir, "title");
-    snprintf(title_arrays, sizeof(title_arrays), "%s/%s_arrays.dat", out_dir, "title");
+    char author_buckets[1024], author_arrays[1024];
 
-    /* Quick existence check */
-    struct stat st;
-    if (stat(title_buckets, &st) != 0) {
-        fprintf(stderr, "Buckets file not found: %s\n", title_buckets);
-        return 1;
+    snprintf(title_buckets, sizeof(title_buckets), "%s/%s_buckets.dat", INDEX_DIR, "title");
+    snprintf(title_arrays, sizeof(title_arrays), "%s/%s_arrays.dat", INDEX_DIR, "title");
+    snprintf(author_buckets, sizeof(author_buckets), "%s/%s_buckets.dat", INDEX_DIR, "author");
+    snprintf(author_arrays, sizeof(author_arrays), "%s/%s_arrays.dat", INDEX_DIR, "author");
+
+    /* check whether index files already present */
+    int need_build = 0;
+    if (access(title_buckets, F_OK) != 0) {
+        printf("Missing index file: %s\n", title_buckets);
+        need_build = 1;
     }
-    if (stat(title_arrays, &st) != 0) {
-        fprintf(stderr, "Arrays file not found: %s\n", title_arrays);
-        return 1;
+    if (access(title_arrays, F_OK) != 0) {
+        printf("Missing index file: %s\n", title_arrays);
+        need_build = 1;
     }
-    if (stat(csv_path, &st) != 0) {
-        fprintf(stderr, "CSV file not found: %s\n", csv_path);
-        return 1;
+    if (access(author_buckets, F_OK) != 0) {
+        printf("Missing index file: %s\n", author_buckets);
+        need_build = 1;
+    }
+    if (access(author_arrays, F_OK) != 0) {
+        printf("Missing index file: %s\n", author_arrays);
+        need_build = 1;
+    }
+
+    if (need_build) {
+        printf("Building indices (streaming) into '%s' ...\n", INDEX_DIR);
+        if (build_both_indices_stream(CSV_PATH, INDEX_DIR, num_buckets_title, num_buckets_author, hash_seed) != 0) {
+            fprintf(stderr, "Failed to build indices\n");
+            return 1;
+        }
+        printf("Indices built.\n");
+    } else {
+        printf("All index files present. Skipping build.\n");
     }
 
     /* Open title index */
@@ -43,6 +76,18 @@ int main(void) {
     }
 
     /* lookup */
+    char query_title[1024];
+    printf("Enter the query\n> ");
+    if (fgets(query_title, sizeof(query_title), stdin) == NULL) {
+        perror("fgets");
+        return 1;
+    }
+    /* remove trailing newline if present */
+    size_t len = strlen(query_title);
+    if (len > 0 && query_title[len-1] == '\n') {
+        query_title[len-1] = '\0';
+    }
+
     offset_t *results = NULL;
     uint32_t count = 0;
     if (index_lookup(&ih, query_title, &results, &count) != 0) {
@@ -55,7 +100,7 @@ int main(void) {
         printf("No results for title: \"%s\"\n", query_title);
     } else {
         printf("Found %u result(s) for title: \"%s\"\n", count, query_title);
-        FILE *f = fopen(csv_path, "rb");
+        FILE *f = fopen(CSV_PATH, "rb");
         if (!f) {
             perror("fopen combined csv");
             free(results);
