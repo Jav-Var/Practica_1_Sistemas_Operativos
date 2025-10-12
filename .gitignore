@@ -32,4 +32,10 @@ Thumbs.db
 
 # ---- Large data / generated indexes ----
 # Raw CSV data (very large) — keep out of Git
-/data/
+
+#/data/dataset/*.csv (Mientras se use el dataset de prueba no se ignora este archivo)
+
+/data/index/*.dat
+
+
+/src/prueba
