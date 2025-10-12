@@ -20,7 +20,7 @@ void index_close(index_handle_t *h);
 int index_lookup(index_handle_t *h, const char *key, offset_t **out_offsets, uint32_t *out_count);
 
 
-int lookup_by_title_author(index_handle_t title_h, index_handle_t author_h, const char *title_key,
+int lookup_by_title_author(index_handle_t *title_h, index_handle_t *author_h, const char *title_key,
     const char *author_key, offset_t **out_offsets, uint32_t *out_count); // No implementado
 
 #endif // READER_H

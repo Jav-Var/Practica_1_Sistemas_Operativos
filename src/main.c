@@ -14,6 +14,9 @@
 #include "common.h"
 
 int main(void) {
+
+    // Create index files
+
     uint64_t hash_seed = 0x12345678abcdefULL; // 
 
     /* create output dir if not exists */
@@ -67,17 +70,23 @@ int main(void) {
     } else {
         printf("All index files present. Skipping build.\n");
     }
-
+    
     /* Open title index */
-    index_handle_t ih;
-    if (index_open(&ih, title_buckets, title_arrays) != 0) {
+    index_handle_t title_h;
+    if (index_open(&title_h, title_buckets, title_arrays) != 0) {
         fprintf(stderr, "Failed to open title index\n");
         return 1;
     }
 
-    /* lookup */
+    index_handle_t author_h;
+    if (index_open(&title_h, title_buckets, title_arrays) != 0) {
+        fprintf(stderr, "Failed to open title index\n");
+        return 1;
+    }
+
+    /* query */
     char query_title[1024];
-    printf("Enter the query\n> ");
+    printf("Enter the title\n> ");
     if (fgets(query_title, sizeof(query_title), stdin) == NULL) {
         perror("fgets");
         return 1;
@@ -88,11 +97,25 @@ int main(void) {
         query_title[len-1] = '\0';
     }
 
+    char query_author[1024];
+    printf("Enter the author\n> ");
+    if (fgets(query_author, sizeof(query_author), stdin) == NULL) {
+        perror("fgets");
+        return 1;
+    }
+    /* remove trailing newline if present */
+    len = strlen(query_author);
+    if (len > 0 && query_author[len-1] == '\n') {
+        query_author[len-1] = '\0';
+    }
+
+    /* get results */
     offset_t *results = NULL;
     uint32_t count = 0;
-    if (index_lookup(&ih, query_title, &results, &count) != 0) {
+    if (lookup_by_title_author(&title_h, &author_h, query_title, query_author, &results, &count) != 0) {
         fprintf(stderr, "index_lookup failed\n");
-        index_close(&ih);
+        index_close(&author_h);
+        index_close(&title_h);
         return 1;
     }
 
@@ -104,7 +127,8 @@ int main(void) {
         if (!f) {
             perror("fopen combined csv");
             free(results);
-            index_close(&ih);
+            index_close(&title_h);
+            index_close(&author_h);
             return 1;
         }
         for (uint32_t i = 0; i < count; ++i) {
@@ -129,7 +153,9 @@ int main(void) {
     }
 
     if (results) free(results);
-    index_close(&ih);
+    index_close(&title_h);
+    index_close(&author_h);
+
 
     printf("Done.\n");
     return 0;
