@@ -10,7 +10,9 @@
 #include <sys/stat.h>
 #include <errno.h>
 
-#include "reader.h"
+#include "reader.h"    // index_handle_t, index_open, index_close
+// #include "builder.h" // si necesitas construir índices desde aquí
+// #include "your_index_api.h" // replace with your actual headers
 
 #define REQ_FIFO "/tmp/index_req.fifo"
 #define RSP_FIFO "/tmp/index_rsp.fifo"
@@ -113,6 +115,14 @@ int main() {
 
     printf("Servidor escuchando. Envíe consultas como 'TITULO|AUTOR' a %s\n", REQ_FIFO);
 
+    FILE *csvf = fopen(csv_path, "rb");
+    if(!csvf) {
+        perror("Fatal: No se puede abrir el archivo CSV:\n");
+        close(req_fd);
+        close(rsp_fd);
+        return 1;
+    }
+    
     while (1) {
         char *req = read_line_fd(req_fd);
         if (!req) {
@@ -156,7 +166,7 @@ int main() {
             continue;
         }
 
-        FILE *csvf = fopen(csv_path, "rb");
+        
         if (!csvf) {
             write_line_fd(rsp_fd, "ERR|No se puede abrir el archivo CSV");
             write_line_fd(rsp_fd, "<END>");
@@ -183,10 +193,9 @@ int main() {
         write_line_fd(rsp_fd, "<END>");
 
         free(offs);
-        fclose(csvf);
         free(req);
     }
-
+    fclose(csvf);
     index_close(&th);
     index_close(&ah);
     close(req_fd);
