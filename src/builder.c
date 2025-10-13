@@ -124,58 +124,67 @@ int build_index_stream(const char *csv_path, const char *out_dir, const char *in
     if (nread <= 0) { fclose(f); close(bfd); close(afd); if (line) free(line); return -1; }
 
     /* iterate rows */
-    while (1) {
-        line_off = ftello(f);
-        nread = getline(&line, &llen, f);
-        if (nread <= 0) break;
+    // Pega este bloque completo en src/builder.c, reemplazando el bucle while existente
 
-        /* extract key field (malloc'd) */
-        char *field = csv_get_field_copy(line, field_idx);
-        if (!field) continue;
-        trim_inplace(field);
-        if (strlen(field) == 0) { free(field); continue; }
+while (1) {
+    line_off = ftello(f);
+    nread = getline(&line, &llen, f);
+    if (nread <= 0) break;
 
-        /* compute hash over prefix */
-        uint64_t h = hash_key_prefix20(field, strlen(field), hash_seed);
-        uint64_t mask = num_buckets - 1;
-        uint64_t bucket = bucket_id_from_hash(h, mask);
-
-        /* read old head */
-        offset_t old_head = buckets_read_head(bfd, num_buckets, bucket);
-
-        /* prepare arrays_node_t with ownership of 'field' */
-        arrays_node_t node;
-        node.key_len = (uint16_t)strlen(field);
-        node.key = field; /* take ownership: arrays_free_node will free it */
-        node.list_len = 1;
-        node.offsets = malloc(sizeof(offset_t) * 1);
-        if (!node.offsets) {
-            /* cleanup and continue */
-            arrays_free_node(&node); /* will free node.key */
-            fprintf(stderr, "malloc failed for offsets\n");
-            continue;
-        }
-        node.offsets[0] = (offset_t)line_off;
-        node.next_ptr = old_head;
-
-        /* append node with next_ptr = old_head */
-        offset_t new_node_off = arrays_append_node(afd, &node);
-        if (new_node_off == 0) {
-            fprintf(stderr, "failed append node\n");
-            /* free node memory (arrays_free_node frees node.key and node.offsets) */
-            arrays_free_node(&node);
-            continue;
-        }
-
-        /* after append we must free the node (arrays_append_node does not take ownership) */
-        arrays_free_node(&node);
-
-        /* write bucket head */
-        if (buckets_write_head(bfd, num_buckets, bucket, new_node_off) != 0) {
-            fprintf(stderr, "failed write bucket head\n");
-            /* continue anyway */
-        }
+    char *field = csv_get_field_copy(line, field_idx);
+    if (!field) continue;
+    
+    trim_inplace(field);
+    if (strlen(field) == 0) { 
+        free(field); 
+        continue; 
     }
+
+    char normalized_key[256];
+    normalize_string_to_buffer(field, normalized_key, sizeof(normalized_key));
+    
+    // El 'field' original ya no es necesario, lo liberamos para evitar fugas de memoria.
+    free(field);
+
+    uint64_t h = hash_key_prefix20(normalized_key, strlen(normalized_key), hash_seed);
+    uint64_t mask = num_buckets - 1;
+    uint64_t bucket = bucket_id_from_hash(h, mask);
+
+    offset_t old_head = buckets_read_head(bfd, num_buckets, bucket);
+
+    arrays_node_t node;
+    // ================== INICIO DE LA CORRECCIÓN ==================
+    // Usamos la longitud y el contenido de la clave NORMALIZADA.
+    node.key_len = (uint16_t)strlen(normalized_key);
+    
+    // Duplicamos 'normalized_key' en el heap, porque 'normalized_key' es una variable local
+    // que se destruirá al final del bucle. 'arrays_append_node' necesita una memoria persistente.
+    node.key = xstrdup(normalized_key); 
+    // =================== FIN DE LA CORRECCIÓN ====================
+
+    node.list_len = 1;
+    node.offsets = malloc(sizeof(offset_t) * 1);
+    if (!node.offsets) {
+        arrays_free_node(&node);
+        fprintf(stderr, "malloc failed for offsets\n");
+        continue;
+    }
+    node.offsets[0] = (offset_t)line_off;
+    node.next_ptr = old_head;
+
+    offset_t new_node_off = arrays_append_node(afd, &node);
+    if (new_node_off == 0) {
+        fprintf(stderr, "failed append node\n");
+        arrays_free_node(&node);
+        continue;
+    }
+
+    arrays_free_node(&node);
+
+    if (buckets_write_head(bfd, num_buckets, bucket, new_node_off) != 0) {
+        fprintf(stderr, "failed write bucket head\n");
+    }
+}
 
     if (line) free(line);
     fclose(f);

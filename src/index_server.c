@@ -140,6 +140,9 @@ int main() {
             title = req;
             author = "";
         }
+        char normalized_title[256], normalized_author[256];
+        normalize_string_to_buffer(title, normalized_title, sizeof(normalized_title));
+        normalize_string_to_buffer(author, normalized_author, sizeof(normalized_author));
 
         if ((title[0] == '\0') && (author[0] == '\0')) {
             write_line_fd(rsp_fd, "ERR|La búsqueda debe tener al menos un parámetro");
@@ -151,7 +154,7 @@ int main() {
         printf("Buscando título: '%s', autor: '%s'\n", title, author);
         offset_t *offs = NULL;
         uint32_t count = 0;
-        int rc = lookup_by_title_author(&th, &ah, title, author, &offs, &count);
+        int rc = lookup_by_title_author(&th, &ah, normalized_title, normalized_author, &offs, &count);
         if (rc != 0) {
             write_line_fd(rsp_fd, "ERR|Error interno en la búsqueda");
             write_line_fd(rsp_fd, "<END>");
