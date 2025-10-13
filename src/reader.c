@@ -59,7 +59,7 @@ int index_lookup(index_handle_t *h, const char *key, offset_t **out_offsets, uin
 
         if (node.key) {
             /* case-sensitive comparison; change if you want case-insensitive */
-            if (strcmp(node.key, key) == 0) {
+            if (normalized_strcmp(node.key, key) == 0) {
                 for (uint32_t i = 0; i < node.list_len; ++i) {
                     if (cnt >= cap) {
                         uint32_t new_cap = cap * 2;

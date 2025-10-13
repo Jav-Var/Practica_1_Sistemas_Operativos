@@ -79,7 +79,7 @@ int main(void) {
     }
 
     index_handle_t author_h;
-    if (index_open(&title_h, title_buckets, title_arrays) != 0) {
+    if (index_open(&author_h, author_buckets, author_arrays) != 0) {
         fprintf(stderr, "Failed to open title index\n");
         return 1;
     }
