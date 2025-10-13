@@ -33,4 +33,17 @@ Para esta práctica se utilizaron los campos *`title`* y *`author_name`* como cr
 El título del libro es el campo mas intuitivo y directo para buscar en el dataset. Al ser una cadena de texto, facilita la generación del valor hash, además, la probabilidad de que dos libros compartan el mismo título es baja.
 
 ### 2. `author_name`
-El nombre del autor permite agrupar libros relacionados y asi facilita la búsqueda entre obras de un mismo autor. Este sirve como segundo criterio en casos donde existan titulos similares o repetidos.
+El nombre del autor permite agrupar libros relacionados y facilita la búsqueda entre obras de un mismo autor. Este sirve como segundo criterio en casos donde existan titulos similares o repetidos.
+
+## Rangos de Valores
+
+### 1. Titulo
+Para la construcción de la tabla hash se utilizaron los **primeros 20 caracteres del titulo** de cada libro como clave principal de indexación, esto permite mantener una buena distribución dentro de la tabla.
+
+Al realizar la consulta, el usuario puede ingresar cualquier cantidad de carácteres del título que desee buscar, el programa se encargará de calcular el valor hash correspondiente y localizar el registro mas cercano.
+
+### 2. Autor
+Para la construcción de la tabla hash se utilizaron los **primero 20 caracteres del nombre del autor** de cada libro como clave principal de indexacion, esto permite mantener una buena distribucion dentro de la tabla.
+
+Al realizar la consulta. el usuario puede ingresar cualquier cantidad de carácteres del autor que desee buscar, el programa se encargará de calcular el valor hash correspondiente y localizar el registro más cercano. 
+
