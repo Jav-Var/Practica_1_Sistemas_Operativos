@@ -27,5 +27,10 @@ mediante un sistema de indexación basado en una **Tabla Hash**, comunicando dos
 
 ## Criterios de Búsqueda Implementados
 
+Para esta práctica se utilizaron los campos *`title`* y *`author_name`* como criterios principales de búsqueda.
 
+### 1. `title`
+El título del libro es el campo mas intuitivo y directo para buscar en el dataset. Al ser una cadena de texto, facilita la generación del valor hash, además, la probabilidad de que dos libros compartan el mismo título es baja.
 
+### 2. `author_name`
+El nombre del autor permite agrupar libros relacionados y asi facilita la búsqueda entre obras de un mismo autor. Este sirve como segundo criterio en casos donde existan titulos similares o repetidos.
