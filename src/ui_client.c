@@ -142,12 +142,14 @@ int main(void) {
         if (strcmp(opt, "1") == 0) {
             printf("Ingrese titulo (enter para dejar vacío): ");
             char *t = getline_trimmed_stdin();
+            printf("Se ingreso %s\n", t);
             if (t && t[0] == '\0') { free(t); t = NULL; }
             free(current_title);
             current_title = t;
         } else if (strcmp(opt, "2") == 0) {
             printf("Ingrese autor (enter para dejar vacío): ");
             char *a = getline_trimmed_stdin();
+            printf("Se ingreso %s\n", a);
             if (a && a[0] == '\0') { free(a); a = NULL; }
             free(current_author);
             current_author = a;

@@ -122,6 +122,7 @@ int main() {
 
         /* Now perform lookup: we use lookup_by_title_author which returns offsets.
            Adapt this to your API: it expects open index handles and returns offsets. */
+        printf("Searching title: %s, author: %s\n", title, author);
         offset_t *offs = NULL;
         uint32_t count = 0;
         int rc = lookup_by_title_author(&th, &ah, title, author, &offs, &count);
