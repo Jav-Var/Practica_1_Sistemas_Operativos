@@ -22,8 +22,10 @@ mediante un sistema de indexación basado en una **Tabla Hash**, comunicando dos
 | `3_star_rating_counts`   | Entero       | Cantidad de calificaciones de 3 estrellas. |
 | `2_star_rating_counts`   | Entero       | Cantidad de calificaciones de 2 estrellas. |
 | `1_star_rating_counts`   | Entero       | Cantidad de calificaciones de 1 estrella. |
+| `total_rating_counts`    | Entero       | Total de calificaciones. |
 | `genres`                 | String       | Géneros literarios asociados al libro. |
 
 ## Criterios de Búsqueda Implementados
+
 
 
