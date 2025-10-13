@@ -53,9 +53,15 @@ static int write_line_fd(int fd, const char *s) {
     return 0;
 }
 
+static void press_enter_to_continue() {
+    printf("Presione enter para continuar.");
+    fflush(stdout);
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF) { }
+}
+
 static void print_record(const char *record) {
     if (!record) {
-        printf("\t<línea nula>\n");
         return;
     }
 
@@ -79,7 +85,7 @@ static void print_record(const char *record) {
         p = comma + 1;
     }
     /* todo lo que quede es genres (puede contener comas) */
-    fields[13] = p;
+    fields[NUM_DATASET_FIELDS - 1] = p;
 
     /* imprimir tal cual (si un campo es NULL o vacío, se imprime vacío) */
     printf("- Titulo: %s\n", (fields[0] ? fields[0] : ""));
@@ -145,13 +151,8 @@ static void read_and_print_response(int rsp_fd) {
     fclose(f);
     if (rec_count == 0) {
         printf("No se encontraron resultados\n");
-    } else {
-        printf("Se encontraron %d resultado%s\n", rec_count, (rec_count == 1) ? "" : "s");
-    }
-    printf("Presione enter para continuar.");
-    fflush(stdout);
-    int c;
-    while ((c = getchar()) != '\n' && c != EOF) { /* descartar */ }
+    } 
+    press_enter_to_continue();
 }
 
 /* Read a trimmed line from stdin (malloc'd). Caller must free.
@@ -178,10 +179,10 @@ static char *getline_trimmed_stdin(void) {
 int main(void) {
     /* Check FIFOs existence */
     if (access(REQ_FIFO, F_OK) != 0 || access(RSP_FIFO, F_OK) != 0) {
-        fprintf(stderr, "Aviso: no se encuentran las FIFOs (%s, %s).\n"
+        fprintf(stderr, "Error: no se encuentran las FIFOs (%s, %s).\n"
                         "Asegúrate de que index_server esté corriendo y haya creado las FIFOs.\n",
                 REQ_FIFO, RSP_FIFO);
-        /* continue: attempt to open may block or fail */
+        return -1;
     }
 
     int req_fd = open(REQ_FIFO, O_RDWR);
@@ -219,7 +220,12 @@ int main(void) {
         if (strcmp(opt, "1") == 0) {
             printf("Ingrese titulo (enter para dejar vacío): ");
             char *t = getline_trimmed_stdin();
+            if (t == NULL || t[0] == '\0') {
+                printf("Se ingreso (vacio)");
+            }
+            else {
             printf("Se ingreso %s\n", t);
+            }
             if (t && t[0] == '\0') { free(t); t = NULL; }
             free(current_title);
             current_title = t;
