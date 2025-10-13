@@ -1,10 +1,10 @@
-# PRACTICA 1 : COMUNICACION ENTRE PROCESOS 
+# PRÁCTICA 1 : COMUNICACIÓN ENTRE PROCESOS 
 
-## Descripcion general
+## Descripción general
 
 Este programa implementa un sistema de busqueda eficiente sobre un conjunto de datos en formato csv, utilizando 
-el dataset **books processed dataset** obtenido de Kaggle. Permite al usuario realizar consultas rapidas
-mediante un sistema de indexacion basado en una **Tabla Hash**, comunicando dos procesos no emparentados a traves de **Tuberias Nombradas (FIFO)**.
+el dataset **books processed dataset** obtenido de Kaggle. Permite al usuario realizar consultas rápidas
+mediante un sistema de indexación basado en una **Tabla Hash**, comunicando dos procesos no emparentados a tráves de **Tuberías Nombradas (FIFO)**.
 
 ## Campos del dataset
 
@@ -24,5 +24,6 @@ mediante un sistema de indexacion basado en una **Tabla Hash**, comunicando dos 
 | `1_star_rating_counts`   | Entero       | Cantidad de calificaciones de 1 estrella. |
 | `genres`                 | String       | Géneros literarios asociados al libro. |
 
-## Criterios de Busqueda Implementados
+## Criterios de Búsqueda Implementados
+
 
