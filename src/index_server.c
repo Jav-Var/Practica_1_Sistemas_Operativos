@@ -71,7 +71,7 @@ int main() {
     if (ensure_fifo(RSP_FIFO) != 0) return 1;
 
     int req_fd = open(REQ_FIFO, O_RDWR);
-    if (req_fd < 0) { perror("abrir fifo de peticiones"); return 1; }
+    if (req_fd < 0) { printf("fifo de peticiones"); return 1; }
     int rsp_fd = open(RSP_FIFO, O_RDWR);
     if (rsp_fd < 0) { perror("abrir fifo de respuestas"); close(req_fd); return 1; }
 
@@ -102,7 +102,7 @@ int main() {
         }
         printf("Índices construidos.\n");
     } else {
-        printf("Archivos de índice encontrados. Omitiendo construcción.\n");
+        printf("Archivos de índice encontrados.\n");
     }
 
     index_handle_t th, ah;
@@ -112,12 +112,12 @@ int main() {
     if (index_open(&ah, author_buckets, author_arrays) != 0) {
         fprintf(stderr, "Fallo al abrir el índice de autores\n");
     }
-
-    printf("Servidor escuchando. Envíe consultas como 'TITULO|AUTOR' a %s\n", REQ_FIFO);
+    printf("Esperando peticiones de busqueda\n");
+    fflush(stdout);
 
     FILE *csvf = fopen(csv_path, "rb");
     if(!csvf) {
-        perror("Fatal: No se puede abrir el archivo CSV:\n");
+        printf("Fatal: No se puede abrir el archivo CSV %s:\n", csv_path);
         close(req_fd);
         close(rsp_fd);
         return 1;

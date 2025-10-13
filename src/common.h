@@ -14,6 +14,7 @@
 
 #define CSV_PATH "data/dataset/books_data.csv"
 #define INDEX_DIR "data/index"
+#define NUM_DATASET_FIELDS 14
 
 typedef uint64_t offset_t;
 
