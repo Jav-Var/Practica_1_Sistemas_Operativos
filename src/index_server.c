@@ -1,5 +1,7 @@
 // index_server.c
 #define _GNU_SOURCE
+#include "util.h"
+#include "builder.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -81,6 +83,41 @@ int main() {
     snprintf(title_arrays, sizeof(title_arrays), "%s/title_arrays.dat", index_dir);
     snprintf(author_buckets, sizeof(author_buckets), "%s/author_buckets.dat", index_dir);
     snprintf(author_arrays, sizeof(author_arrays), "%s/author_arrays.dat", index_dir);
+
+
+    /* check whether index files already present */
+    int need_build = 0;
+    if (access(title_buckets, F_OK) != 0) {
+        printf("Missing index file: %s\n", title_buckets);
+        need_build = 1;
+    }
+    if (access(title_arrays, F_OK) != 0) {
+        printf("Missing index file: %s\n", title_arrays);
+        need_build = 1;
+    }
+    if (access(author_buckets, F_OK) != 0) {
+        printf("Missing index file: %s\n", author_buckets);
+        need_build = 1;
+    }
+    if (access(author_arrays, F_OK) != 0) {
+        printf("Missing index file: %s\n", author_arrays);
+        need_build = 1;
+    }
+
+    if (need_build) {
+        uint64_t num_buckets_title = next_pow2(4096);
+        uint64_t num_buckets_author = next_pow2(4096);  
+        uint64_t hash_seed = 0x12345678abcdefULL; 
+        printf("Building indices (streaming) into '%s' ...\n", INDEX_DIR);
+        if (build_both_indices_stream(CSV_PATH, INDEX_DIR, num_buckets_title, num_buckets_author, hash_seed) != 0) {
+            fprintf(stderr, "Failed to build indices\n");
+            return 1;
+        }
+        printf("Indices built.\n");
+    } else {
+        printf("All index files present. Skipping build.\n");
+    }
+    
 
     index_handle_t th, ah;
     if (index_open(&th, title_buckets, title_arrays) != 0) {
