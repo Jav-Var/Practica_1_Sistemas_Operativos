@@ -124,67 +124,60 @@ int build_index_stream(const char *csv_path, const char *out_dir, const char *in
     if (nread <= 0) { fclose(f); close(bfd); close(afd); if (line) free(line); return -1; }
 
     /* iterate rows */
-    // Pega este bloque completo en src/builder.c, reemplazando el bucle while existente
 
-while (1) {
-    line_off = ftello(f);
-    nread = getline(&line, &llen, f);
-    if (nread <= 0) break;
+    while (1) {
+        line_off = ftello(f);
+        nread = getline(&line, &llen, f);
+        if (nread <= 0) break;
 
-    char *field = csv_get_field_copy(line, field_idx);
-    if (!field) continue;
-    
-    trim_inplace(field);
-    if (strlen(field) == 0) { 
-        free(field); 
-        continue; 
-    }
+        char *field = csv_get_field_copy(line, field_idx);
+        if (!field) continue;
+        
+        trim_inplace(field);
+        if (strlen(field) == 0) { 
+            free(field); 
+            continue; 
+        }
 
-    char normalized_key[256];
-    normalize_string_to_buffer(field, normalized_key, sizeof(normalized_key));
-    
-    // El 'field' original ya no es necesario, lo liberamos para evitar fugas de memoria.
-    free(field);
+        char normalized_key[256];
+        normalize_string_to_buffer(field, normalized_key, sizeof(normalized_key));
+        
+        free(field);
 
-    uint64_t h = hash_key_prefix20(normalized_key, strlen(normalized_key), hash_seed);
-    uint64_t mask = num_buckets - 1;
-    uint64_t bucket = bucket_id_from_hash(h, mask);
+        uint64_t h = hash_key_prefix20(normalized_key, strlen(normalized_key), hash_seed);
+        uint64_t mask = num_buckets - 1;
+        uint64_t bucket = bucket_id_from_hash(h, mask);
 
-    offset_t old_head = buckets_read_head(bfd, num_buckets, bucket);
+        offset_t old_head = buckets_read_head(bfd, num_buckets, bucket);
 
-    arrays_node_t node;
-    // ================== INICIO DE LA CORRECCIÓN ==================
-    // Usamos la longitud y el contenido de la clave NORMALIZADA.
-    node.key_len = (uint16_t)strlen(normalized_key);
-    
-    // Duplicamos 'normalized_key' en el heap, porque 'normalized_key' es una variable local
-    // que se destruirá al final del bucle. 'arrays_append_node' necesita una memoria persistente.
-    node.key = xstrdup(normalized_key); 
-    // =================== FIN DE LA CORRECCIÓN ====================
+        arrays_node_t node;
+        node.key_len = (uint16_t)strlen(normalized_key);
+        
+        node.key = xstrdup(normalized_key); 
 
-    node.list_len = 1;
-    node.offsets = malloc(sizeof(offset_t) * 1);
-    if (!node.offsets) {
+        node.list_len = 1;
+        node.offsets = malloc(sizeof(offset_t) * 1);
+        if (!node.offsets) {
+            arrays_free_node(&node);
+            fprintf(stderr, "malloc failed for offsets\n");
+            continue;
+        }
+        node.offsets[0] = (offset_t)line_off;
+        node.next_ptr = old_head;
+
+        offset_t new_node_off = arrays_append_node(afd, &node);
+        if (new_node_off == 0) {
+            fprintf(stderr, "failed append node\n");
+            arrays_free_node(&node);
+            continue;
+        }
+
         arrays_free_node(&node);
-        fprintf(stderr, "malloc failed for offsets\n");
-        continue;
-    }
-    node.offsets[0] = (offset_t)line_off;
-    node.next_ptr = old_head;
 
-    offset_t new_node_off = arrays_append_node(afd, &node);
-    if (new_node_off == 0) {
-        fprintf(stderr, "failed append node\n");
-        arrays_free_node(&node);
-        continue;
+        if (buckets_write_head(bfd, num_buckets, bucket, new_node_off) != 0) {
+            fprintf(stderr, "failed write bucket head\n");
+        }
     }
-
-    arrays_free_node(&node);
-
-    if (buckets_write_head(bfd, num_buckets, bucket, new_node_off) != 0) {
-        fprintf(stderr, "failed write bucket head\n");
-    }
-}
 
     if (line) free(line);
     fclose(f);
@@ -195,7 +188,13 @@ while (1) {
 
 int build_both_indices_stream(const char *csv_path, const char *out_dir, uint64_t num_buckets_title, uint64_t num_buckets_author, uint64_t hash_seed) {
     /* We will do two passes (one per index) to keep code simple */
-    if (build_index_stream(csv_path, out_dir, "title", num_buckets_title, hash_seed) != 0) return -1;
-    if (build_index_stream(csv_path, out_dir, "author", num_buckets_author, hash_seed) != 0) return -1;
+    if (build_index_stream(csv_path, out_dir, "title", num_buckets_title, hash_seed) != 0) {
+        perror("build title index");
+        return -1;
+    }
+    if (build_index_stream(csv_path, out_dir, "author", num_buckets_author, hash_seed) != 0) {
+        perror("build author index");   
+        return -1;
+    }
     return 0;
 }

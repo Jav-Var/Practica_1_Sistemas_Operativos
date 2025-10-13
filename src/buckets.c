@@ -5,6 +5,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+#include <errno.h>
+#include <sys/stat.h>
 
 /* Header layout:
    offset 0: magic 4 bytes
@@ -18,8 +20,12 @@
 */
 
 int buckets_create(const char *path, uint64_t num_buckets, uint64_t hash_seed) {
+    mkdir("data/index", 0755); 
     int fd = open(path, O_CREAT | O_TRUNC | O_RDWR, 0644);
-    if (fd < 0) return -1;
+    if (fd < 0) {
+        printf("open %s failed: %s\n", path, strerror(errno));
+        return -1;
+    }
 
     unsigned char header[BUCKETS_HEADER_SIZE];
     memset(header, 0, sizeof(header));
@@ -42,7 +48,11 @@ int buckets_create(const char *path, uint64_t num_buckets, uint64_t hash_seed) {
     /* allocate zero buffer in chunks to avoid huge malloc */
     size_t chunk = 65536;
     unsigned char *zeros = calloc(1, chunk);
-    if (!zeros) { close(fd); return -1; }
+    if (!zeros) {
+        close(fd);
+        return -1;
+    }
+
     size_t remaining = entries_size;
     off_t pos = entries_offset;
     while (remaining > 0) {
