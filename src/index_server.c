@@ -1,4 +1,4 @@
-// index_server.c
+// index_server.c - Mensajes localizados a español
 #define _GNU_SOURCE
 #include "util.h"
 #include "builder.h"
@@ -10,9 +10,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 
-#include "reader.h"    // index_handle_t, index_open, index_close
-// #include "builder.h" // si necesitas construir índices desde aquí
-// #include "your_index_api.h" // replace with your actual headers
+#include "reader.h"
 
 #define REQ_FIFO "/tmp/index_req.fifo"
 #define RSP_FIFO "/tmp/index_rsp.fifo"
@@ -23,7 +21,7 @@ static int ensure_fifo(const char *path) {
     struct stat st;
     if (stat(path, &st) == 0) {
         if (!S_ISFIFO(st.st_mode)) {
-            fprintf(stderr, "Path exists and is not FIFO: %s\n", path);
+            fprintf(stderr, "La ruta existe y no es un FIFO: %s\n", path);
             return -1;
         }
         return 0;
@@ -54,7 +52,6 @@ static char *read_line_fd(int fd) {
     return buf;
 }
 
-/* Write line to fd, adding newline */
 static int write_line_fd(int fd, const char *s) {
     size_t len = strlen(s);
     ssize_t w = write(fd, s, len);
@@ -71,73 +68,57 @@ int main() {
     if (ensure_fifo(REQ_FIFO) != 0) return 1;
     if (ensure_fifo(RSP_FIFO) != 0) return 1;
 
-    /* open FIFOs O_RDWR to avoid blocking on open if no peer yet */
     int req_fd = open(REQ_FIFO, O_RDWR);
-    if (req_fd < 0) { perror("open req fifo"); return 1; }
+    if (req_fd < 0) { perror("abrir fifo de peticiones"); return 1; }
     int rsp_fd = open(RSP_FIFO, O_RDWR);
-    if (rsp_fd < 0) { perror("open rsp fifo"); close(req_fd); return 1; }
+    if (rsp_fd < 0) { perror("abrir fifo de respuestas"); close(req_fd); return 1; }
 
-    /* Open indices once (at server start). Adjust paths to your files. */
     char title_buckets[1024], title_arrays[1024], author_buckets[1024], author_arrays[1024];
     snprintf(title_buckets, sizeof(title_buckets), "%s/title_buckets.dat", index_dir);
     snprintf(title_arrays, sizeof(title_arrays), "%s/title_arrays.dat", index_dir);
     snprintf(author_buckets, sizeof(author_buckets), "%s/author_buckets.dat", index_dir);
     snprintf(author_arrays, sizeof(author_arrays), "%s/author_arrays.dat", index_dir);
 
-
-    /* check whether index files already present */
     int need_build = 0;
     if (access(title_buckets, F_OK) != 0) {
-        printf("Missing index file: %s\n", title_buckets);
-        need_build = 1;
-    }
-    if (access(title_arrays, F_OK) != 0) {
-        printf("Missing index file: %s\n", title_arrays);
-        need_build = 1;
-    }
-    if (access(author_buckets, F_OK) != 0) {
-        printf("Missing index file: %s\n", author_buckets);
+        printf("Falta archivo de índice: %s\n", title_buckets);
         need_build = 1;
     }
     if (access(author_arrays, F_OK) != 0) {
-        printf("Missing index file: %s\n", author_arrays);
+        printf("Falta archivo de índice: %s\n", author_arrays);
         need_build = 1;
     }
 
     if (need_build) {
         uint64_t num_buckets_title = next_pow2(4096);
-        uint64_t num_buckets_author = next_pow2(4096);  
-        uint64_t hash_seed = 0x12345678abcdefULL; 
-        printf("Building indices (streaming) into '%s' ...\n", INDEX_DIR);
+        uint64_t num_buckets_author = next_pow2(4096);
+        uint64_t hash_seed = 0x12345678abcdefULL;
+        printf("Construyendo índices en '%s'...\n", INDEX_DIR);
         if (build_both_indices_stream(CSV_PATH, INDEX_DIR, num_buckets_title, num_buckets_author, hash_seed) != 0) {
-            fprintf(stderr, "Failed to build indices\n");
+            fprintf(stderr, "Fallo al construir los índices\n");
             return 1;
         }
-        printf("Indices built.\n");
+        printf("Índices construidos.\n");
     } else {
-        printf("All index files present. Skipping build.\n");
+        printf("Archivos de índice encontrados. Omitiendo construcción.\n");
     }
-    
 
     index_handle_t th, ah;
     if (index_open(&th, title_buckets, title_arrays) != 0) {
-        fprintf(stderr, "Failed to open title index\n");
-        // but keep running or exit?
+        fprintf(stderr, "Fallo al abrir el índice de títulos\n");
     }
     if (index_open(&ah, author_buckets, author_arrays) != 0) {
-        fprintf(stderr, "Failed to open author index\n");
+        fprintf(stderr, "Fallo al abrir el índice de autores\n");
     }
 
-    printf("Server listening. Send queries as 'TITLE|AUTHOR' lines to %s\n", REQ_FIFO);
+    printf("Servidor escuchando. Envíe consultas como 'TITULO|AUTOR' a %s\n", REQ_FIFO);
 
     while (1) {
         char *req = read_line_fd(req_fd);
         if (!req) {
-            // sleep a bit on EOF/error and continue
             usleep(100000);
             continue;
         }
-        // parse request: split on first '|'
         char *sep = strchr(req, '|');
         char *title = NULL;
         char *author = NULL;
@@ -151,20 +132,18 @@ int main() {
         }
 
         if ((title[0] == '\0') && (author[0] == '\0')) {
-            write_line_fd(rsp_fd, "ERR|Search must have at least one parameter");
+            write_line_fd(rsp_fd, "ERR|La búsqueda debe tener al menos un parámetro");
             write_line_fd(rsp_fd, "<END>");
             free(req);
             continue;
         }
 
-        /* Now perform lookup: we use lookup_by_title_author which returns offsets.
-           Adapt this to your API: it expects open index handles and returns offsets. */
-        printf("Searching title: %s, author: %s\n", title, author);
+        printf("Buscando título: '%s', autor: '%s'\n", title, author);
         offset_t *offs = NULL;
         uint32_t count = 0;
         int rc = lookup_by_title_author(&th, &ah, title, author, &offs, &count);
         if (rc != 0) {
-            write_line_fd(rsp_fd, "ERR|Internal lookup error");
+            write_line_fd(rsp_fd, "ERR|Error interno en la búsqueda");
             write_line_fd(rsp_fd, "<END>");
             free(req);
             continue;
@@ -177,10 +156,9 @@ int main() {
             continue;
         }
 
-        /* For each offset read the CSV line and write it to response FIFO */
         FILE *csvf = fopen(csv_path, "rb");
         if (!csvf) {
-            write_line_fd(rsp_fd, "ERR|Cannot open CSV file");
+            write_line_fd(rsp_fd, "ERR|No se puede abrir el archivo CSV");
             write_line_fd(rsp_fd, "<END>");
             free(offs);
             free(req);
@@ -191,14 +169,12 @@ int main() {
         for (uint32_t i = 0; i < count; ++i) {
             off_t off = (off_t)offs[i];
             if (fseeko(csvf, off, SEEK_SET) != 0) {
-                // skip
                 continue;
             }
             char *line = NULL;
             size_t llen = 0;
             ssize_t r = getline(&line, &llen, csvf);
             if (r > 0) {
-                // strip trailing newline for neat output (optional)
                 if (line[r-1] == '\n') line[r-1] = '\0';
                 write_line_fd(rsp_fd, line);
             }
@@ -211,7 +187,6 @@ int main() {
         free(req);
     }
 
-    /* cleanup (never reached in this loop) */
     index_close(&th);
     index_close(&ah);
     close(req_fd);
