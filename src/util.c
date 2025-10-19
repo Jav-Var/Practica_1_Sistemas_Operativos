@@ -35,68 +35,6 @@ char *xstrdup(const char *s) {
     return d;
 }
 
-
-void normalize_string_to_buffer(const char *in, char *out, size_t out_size) {
-    if (!in || !out || out_size == 0) {
-        if (out && out_size > 0) out[0] = '\0';
-        return;
-    }
-
-    size_t i = 0;
-    size_t out_idx = 0;
-    
-    while (in[i] != '\0' && out_idx < out_size - 1) {
-        unsigned char c1 = in[i];
-
-        // Manejo de caracteres ASCII de 1 byte (los más comunes)
-        if (c1 < 128) {
-            out[out_idx++] = tolower(c1);
-            i++;
-            continue;
-        }
-
-        // Manejo de caracteres UTF-8 de 2 bytes para español
-        if (c1 == 0xc3) {
-            unsigned char c2 = in[i+1];
-            switch (c2) {
-                case 0x81: // Á
-                case 0xa1: // á
-                    out[out_idx++] = 'a';
-                    break;
-                case 0x89: // É
-                case 0xa9: // é
-                    out[out_idx++] = 'e';
-                    break;
-                case 0x8d: // Í
-                case 0xad: // í
-                    out[out_idx++] = 'i';
-                    break;
-                case 0x93: // Ó
-                case 0xb3: // ó
-                    out[out_idx++] = 'o';
-                    break;
-                case 0x9a: // Ú
-                case 0xba: // ú
-                    out[out_idx++] = 'u';
-                    break;
-                case 0x91: // Ñ
-                case 0xb1: // ñ -> CORREGIDO
-                    out[out_idx++] = 'n';
-                    break;
-                default:
-                    // Si es un carácter UTF-8 que no manejamos, lo ignoramos
-                    break;
-            }
-            i += 2; // Avanzamos 2 bytes
-        } else {
-            // Si es otro carácter multibyte que no reconocemos, lo ignoramos
-            i++;
-        }
-    }
-    
-    out[out_idx] = '\0';
-}
-
 /* normalized_strcmp: compares normalized versions of a and b.
  * returns same semantics as strcmp.
  * handles NULL pointers (treat as empty).
