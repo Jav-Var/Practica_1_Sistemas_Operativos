@@ -38,7 +38,7 @@ static char *csv_get_field_copy(const char *line, int field_idx) {
         }
     }
     /* now extract field at idx == field_idx */
-    if (!*p) return xstrdup("");
+    if (!*p) return strdup("");
     char *out = NULL;
     if (*p == '"') {
         p++;
@@ -73,7 +73,7 @@ static char *csv_get_field_copy(const char *line, int field_idx) {
         if (*p == ',') p++;
     }
     char *trimmed = trim_inplace(out);
-    char *res = xstrdup(trimmed);
+    char *res = strdup(trimmed);
     free(out);
     return res;
 }

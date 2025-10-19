@@ -9,9 +9,6 @@ uint64_t next_pow2(uint64_t v);
 /* trim leading/trailing whitespace in-place and return pointer */
 char *trim_inplace(char *s);
 
-/* safe strdup */
-char *xstrdup(const char *s);
-
 int normalized_strcmp(const char *a, const char *b);
 char *normalize_string(const char *s);
 #endif // UTIL_H

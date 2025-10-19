@@ -27,14 +27,6 @@ char *trim_inplace(char *s) {
     return s;
 }
 
-char *xstrdup(const char *s) {
-    if (!s) return NULL;
-    char *d = malloc(strlen(s) + 1);
-    if (!d) return NULL;
-    strcpy(d, s);
-    return d;
-}
-
 /* normalized_strcmp: compares normalized versions of a and b.
  * returns same semantics as strcmp.
  * handles NULL pointers (treat as empty).
@@ -72,7 +64,10 @@ char *normalize_string(const char *s) {
 
         // Manejo de caracteres ASCII de 1 byte (los más comunes)
         if (c1 < 128) {
-            out[out_idx++] = tolower(c1);
+            char lower = tolower(c1);
+            if ((lower >= 'a' && lower <= 'z') || (lower >= '0' && lower <= '9')) {
+                out[out_idx++] = lower;
+            }
             i++;
             continue;
         }
