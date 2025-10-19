@@ -72,10 +72,7 @@ static char *csv_get_field_copy(const char *line, int field_idx) {
         out[len] = '\0';
         if (*p == ',') p++;
     }
-    char *trimmed = trim_inplace(out);
-    char *res = strdup(trimmed);
-    free(out);
-    return res;
+    return out;
 }
 
 /* field index: title = 0, author_name = 1 */
@@ -136,12 +133,6 @@ int build_index_stream(const char *csv_path, const char *out_dir, const char *in
 
         char *field = csv_get_field_copy(line, field_idx);
         if (!field) continue;
-        
-        trim_inplace(field);
-        if (strlen(field) == 0) { 
-            free(field); 
-            continue; 
-        }
 
         char *normalized_key;
         normalized_key = normalize_string(field);
