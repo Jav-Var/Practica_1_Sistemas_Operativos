@@ -36,7 +36,7 @@ Thumbs.db
 #/data/dataset/*.csv (Mientras se use el dataset de prueba no se ignora este archivo)
 
 /data/index/*.dat
-
+/data/dataset/prueba.csv
 
 /src/prueba
 /src/prueba2
