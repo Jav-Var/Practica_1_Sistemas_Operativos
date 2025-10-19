@@ -3,6 +3,7 @@
 #include "arrays.h"
 #include "common.h"
 #include "hash.h"
+#include "util.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -30,7 +31,7 @@ void index_close(index_handle_t *h) {
     h->hash_seed = 0;
 }
 
-int index_lookup(index_handle_t *h, const char *key, offset_t **out_offsets, uint32_t *out_count) {
+int index_lookup(index_handle_t *h, const char *key, off_t **out_offsets, uint32_t *out_count) {
     if (!h || !key || !out_offsets || !out_count) return -1;
     *out_offsets = NULL;
     *out_count = 0;
@@ -38,16 +39,16 @@ int index_lookup(index_handle_t *h, const char *key, offset_t **out_offsets, uin
     uint64_t hval = hash_key_prefix20(key, strlen(key), h->hash_seed);
     uint64_t mask = h->num_buckets - 1;
     uint64_t bucket = bucket_id_from_hash(hval, mask);
-    offset_t head = buckets_read_head(h->buckets_fd, h->num_buckets, bucket);
+    off_t head = buckets_read_head(h->buckets_fd, h->num_buckets, bucket);
     if (head == 0) return 0;
 
     /* dynamic array for results */
     uint32_t cap = 16;
     uint32_t cnt = 0;
-    offset_t *results = malloc(sizeof(offset_t) * cap);
+    off_t *results = malloc(sizeof(off_t) * cap);
     if (!results) return -1;
 
-    offset_t cur = head;
+    off_t cur = head;
     while (cur != 0) {
         arrays_node_t node = {0, NULL, 0, NULL, 0};
         if (arrays_read_node_full(h->arrays_fd, cur, &node) != 0) {
@@ -55,7 +56,7 @@ int index_lookup(index_handle_t *h, const char *key, offset_t **out_offsets, uin
             break;
         }
 
-        offset_t next = node.next_ptr; /* save next before freeing node */
+        off_t next = node.next_ptr; /* save next before freeing node */
 
         if (node.key) {
             /* case-sensitive comparison; change if you want case-insensitive */
@@ -63,7 +64,7 @@ int index_lookup(index_handle_t *h, const char *key, offset_t **out_offsets, uin
                 for (uint32_t i = 0; i < node.list_len; ++i) {
                     if (cnt >= cap) {
                         uint32_t new_cap = cap * 2;
-                        offset_t *tmp = realloc(results, sizeof(offset_t) * new_cap);
+                        off_t *tmp = realloc(results, sizeof(off_t) * new_cap);
                         if (!tmp) {
                             /* allocation failure: clean up and return error */
                             arrays_free_node(&node);
@@ -95,15 +96,15 @@ int index_lookup(index_handle_t *h, const char *key, offset_t **out_offsets, uin
 }
 
 static int cmp_offset(const void *a, const void *b) {
-    const offset_t va = *(const offset_t *)a;
-    const offset_t vb = *(const offset_t *)b;
+    const off_t va = *(const off_t *)a;
+    const off_t vb = *(const off_t *)b;
     if (va < vb) return -1;
     if (va > vb) return 1;
     return 0;
 }
 
 int lookup_by_title_author(index_handle_t *title_h, index_handle_t *author_h,
-    const char *title_key, const char *author_key, offset_t **out_offsets, uint32_t *out_count)
+    const char *title_key, const char *author_key, off_t **out_offsets, uint32_t *out_count)
 {
     if (!out_offsets || !out_count) return -1;
 
@@ -119,9 +120,9 @@ int lookup_by_title_author(index_handle_t *title_h, index_handle_t *author_h,
     *out_offsets = NULL;
     *out_count = 0;
 
-    offset_t *title_offs = NULL;
+    off_t *title_offs = NULL;
     uint32_t title_cnt = 0;
-    offset_t *author_offs = NULL;
+    off_t *author_offs = NULL;
     uint32_t author_cnt = 0;
     int rc = 0;
 
@@ -187,14 +188,14 @@ int lookup_by_title_author(index_handle_t *title_h, index_handle_t *author_h,
 
     /* Sort both arrays in-place so we can do two-pointer intersection.
        index_lookup returns malloc'd arrays which we own here, so it's fine to sort them. */
-    qsort(title_offs, title_cnt, sizeof(offset_t), cmp_offset);
-    qsort(author_offs, author_cnt, sizeof(offset_t), cmp_offset);
+    qsort(title_offs, title_cnt, sizeof(off_t), cmp_offset);
+    qsort(author_offs, author_cnt, sizeof(off_t), cmp_offset);
 
     /* allocate result buffer (at most min(title_cnt, author_cnt)) */
     uint32_t i = 0, j = 0;
     uint32_t cap = (title_cnt < author_cnt) ? title_cnt : author_cnt;
-    offset_t *res = NULL;
-    if (cap > 0) res = malloc(sizeof(offset_t) * cap);
+    off_t *res = NULL;
+    if (cap > 0) res = malloc(sizeof(off_t) * cap);
     if (!res && cap > 0) {
         /* memory error */
         free(title_offs);
@@ -203,7 +204,7 @@ int lookup_by_title_author(index_handle_t *title_h, index_handle_t *author_h,
     }
 
     uint32_t res_cnt = 0;
-    offset_t last_added = (offset_t)0; /* used to deduplicate equal consecutive offsets */
+    off_t last_added = (off_t)0; /* used to deduplicate equal consecutive offsets */
     int have_last = 0;
 
     while (i < title_cnt && j < author_cnt) {
@@ -213,7 +214,7 @@ int lookup_by_title_author(index_handle_t *title_h, index_handle_t *author_h,
             j++;
         } else {
             /* equal */
-            offset_t v = title_offs[i];
+            off_t v = title_offs[i];
             if (!have_last || v != last_added) {
                 res[res_cnt++] = v;
                 last_added = v;
@@ -236,7 +237,7 @@ int lookup_by_title_author(index_handle_t *title_h, index_handle_t *author_h,
     }
 
     /* shrink to fit */
-    offset_t *final = realloc(res, sizeof(offset_t) * res_cnt);
+    off_t *final = realloc(res, sizeof(off_t) * res_cnt);
     if (!final) {
         /* if realloc fails keep original res */
         final = res;
@@ -245,3 +246,4 @@ int lookup_by_title_author(index_handle_t *title_h, index_handle_t *author_h,
     *out_count = res_cnt;
     return 0;
 }
+

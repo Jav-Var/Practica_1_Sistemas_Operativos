@@ -30,7 +30,4 @@ void le_write_u16(void *buf, uint16_t v);
 void le_write_u32(void *buf, uint32_t v);
 void le_write_u64(void *buf, uint64_t v);
 
-char *normalize_string(const char *s);
-int normalized_strcmp(const char *a, const char *b);
-
 #endif // COMMON_H

@@ -27,8 +27,8 @@ typedef struct {
     uint16_t key_len;         
     char *key;           // key (string) of the node (title/author)
     uint32_t list_len;   // number of offsets
-    offset_t *offsets;   // array of length list_len
-    offset_t next_ptr;   // next pointer to manage collisions (hash table implemented by chaining)
+    off_t *offsets;   // array of length list_len
+    off_t next_ptr;   // next pointer to manage collisions (hash table implemented by chaining)
 } arrays_node_t;
 
 /* create an empty arrays file with header space reserved */
@@ -38,10 +38,10 @@ int arrays_create(const char *path);
 int arrays_open(const char *path);
 
 /* appends a node and return offset where node starts (absolute offset in arrays.dat) */
-offset_t arrays_append_node(int fd, const arrays_node_t *node);
+off_t arrays_append_node(int fd, const arrays_node_t *node);
 
 /* read a node fully: caller must free key_out and offsets_out */
-int arrays_read_node_full(int fd, offset_t node_off, arrays_node_t *node);
+int arrays_read_node_full(int fd, off_t node_off, arrays_node_t *node);
 
 /* returns the size of a node with a key (string) of size key_len, and a list of offsets of size list_len */
 size_t arrays_calc_node_size(uint16_t key_len, uint32_t list_len);

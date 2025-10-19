@@ -48,10 +48,10 @@ int buckets_create(const char *path, uint64_t num_buckets, uint64_t hash_seed);
 int buckets_open_readwrite(const char *path, uint64_t *num_buckets_out, uint64_t *hash_seed_out);
 
 /* Read head offset for bucket_id (0..num_buckets-1) */
-offset_t buckets_read_head(int fd, uint64_t num_buckets, uint64_t bucket_id);
+off_t buckets_read_head(int fd, uint64_t num_buckets, uint64_t bucket_id);
 
 /* Write head offset for bucket_id */
-int buckets_write_head(int fd, uint64_t num_buckets, uint64_t bucket_id, offset_t head);
+int buckets_write_head(int fd, uint64_t num_buckets, uint64_t bucket_id, off_t head);
 
 /* Helper to compute offset in file for bucket entry */
 off_t buckets_entry_offset(uint64_t bucket_id);

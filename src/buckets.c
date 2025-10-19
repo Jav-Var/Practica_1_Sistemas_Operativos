@@ -95,7 +95,7 @@ off_t buckets_entry_offset(uint64_t bucket_id) {
     return (off_t)BUCKETS_HEADER_SIZE + (off_t)bucket_id * BUCKET_ENTRY_SIZE;
 }
 
-offset_t buckets_read_head(int fd, uint64_t num_buckets, uint64_t bucket_id) {
+off_t buckets_read_head(int fd, uint64_t num_buckets, uint64_t bucket_id) {
     if (bucket_id >= num_buckets) return 0;
     off_t pos = buckets_entry_offset(bucket_id);
     unsigned char buf[8];
@@ -103,12 +103,11 @@ offset_t buckets_read_head(int fd, uint64_t num_buckets, uint64_t bucket_id) {
     return le_read_u64(buf);
 }
 
-int buckets_write_head(int fd, uint64_t num_buckets, uint64_t bucket_id, offset_t head) {
+int buckets_write_head(int fd, uint64_t num_buckets, uint64_t bucket_id, off_t head) {
     if (bucket_id >= num_buckets) return -1;
     off_t pos = buckets_entry_offset(bucket_id);
     unsigned char buf[8];
     le_write_u64(buf, head);
     if (safe_pwrite(fd, buf, 8, pos) != 8) return -1;
-    /* optional: fsync here if durability needed */
     return 0;
 }

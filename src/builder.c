@@ -127,6 +127,10 @@ int build_index_stream(const char *csv_path, const char *out_dir, const char *in
 
     while (1) {
         line_off = ftello(f);
+        if (line_off == (off_t)-1) {
+            perror("ftello");
+            break;
+        }
         nread = getline(&line, &llen, f);
         if (nread <= 0) break;
 
@@ -139,8 +143,8 @@ int build_index_stream(const char *csv_path, const char *out_dir, const char *in
             continue; 
         }
 
-        char normalized_key[256];
-        normalize_string_to_buffer(field, normalized_key, sizeof(normalized_key));
+        char *normalized_key;
+        normalized_key = normalize_string(field);
         
         free(field);
 
@@ -148,24 +152,25 @@ int build_index_stream(const char *csv_path, const char *out_dir, const char *in
         uint64_t mask = num_buckets - 1;
         uint64_t bucket = bucket_id_from_hash(h, mask);
 
-        offset_t old_head = buckets_read_head(bfd, num_buckets, bucket);
+        off_t old_head = buckets_read_head(bfd, num_buckets, bucket);
 
         arrays_node_t node;
         node.key_len = (uint16_t)strlen(normalized_key);
-        
-        node.key = xstrdup(normalized_key); 
+        node.key = strdup(normalized_key); 
+
+        free(normalized_key);
 
         node.list_len = 1;
-        node.offsets = malloc(sizeof(offset_t) * 1);
+        node.offsets = malloc(sizeof(off_t) * 1);
         if (!node.offsets) {
             arrays_free_node(&node);
             fprintf(stderr, "malloc failed for offsets\n");
             continue;
         }
-        node.offsets[0] = (offset_t)line_off;
+        node.offsets[0] = (off_t)line_off;
         node.next_ptr = old_head;
 
-        offset_t new_node_off = arrays_append_node(afd, &node);
+        off_t new_node_off = arrays_append_node(afd, &node);
         if (new_node_off == 0) {
             fprintf(stderr, "failed append node\n");
             arrays_free_node(&node);

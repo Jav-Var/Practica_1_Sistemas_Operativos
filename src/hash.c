@@ -1,7 +1,7 @@
 /* hash.c  -- modificar la función hash_key_prefix20 para usar normalize_string
    (reemplaza la implementación anterior). */
 #include "hash.h"
-#include "common.h" /* para normalize_string */
+#include "util.h" /* para normalize_string */
 #include <stdint.h>
 #include <stddef.h>
 #include <stdlib.h>

@@ -14,5 +14,6 @@ char *xstrdup(const char *s);
 
 // Añade esta línea a src/util.h
 void normalize_string_to_buffer(const char *in, char *out, size_t out_size);
-
+int normalized_strcmp(const char *a, const char *b);
+char *normalize_string(const char *s);
 #endif // UTIL_H

@@ -41,7 +41,7 @@ size_t arrays_calc_node_size(uint16_t key_len, uint32_t list_len) {
 }
 
 /* append node: serialize into a buffer then write at EOF */
-offset_t arrays_append_node(int fd, const arrays_node_t *node) {
+off_t arrays_append_node(int fd, const arrays_node_t *node) {
     if (!node || !node->key) return 0;
     if (node->key_len != (uint16_t)strlen(node->key)) {
         /* ensure key_len consistent */
@@ -97,11 +97,11 @@ offset_t arrays_append_node(int fd, const arrays_node_t *node) {
 
     free(buf);
     /* optional fsync for durability */
-    return (offset_t)new_off;
+    return (off_t)new_off;
 }
 
 // reads the node data in an offset to a struct (arrays_node_t)
-int arrays_read_node_full(int fd, offset_t node_off, arrays_node_t *node) {
+int arrays_read_node_full(int fd, off_t node_off, arrays_node_t *node) {
     if (!node) return -1;
     unsigned char tmp2[sizeof(uint16_t)];
     if (safe_pread(fd, tmp2, sizeof(uint16_t), node_off) != (ssize_t)sizeof(uint16_t)) return -1;
@@ -144,16 +144,16 @@ int arrays_read_node_full(int fd, offset_t node_off, arrays_node_t *node) {
         }
     }
 
-    offset_t *offsets = NULL;
+    off_t *offsets = NULL;
     if (list_len > 0) {
-        offsets = malloc(sizeof(offset_t) * list_len);
+        offsets = malloc(sizeof(off_t) * list_len);
         if (!offsets) { free(key); free(restbuf); return -1; }
         for (uint32_t i = 0; i < list_len; ++i) {
             offsets[i] = le_read_u64(restbuf + (size_t)i * sizeof(uint64_t));
         }
     }
 
-    offset_t next = le_read_u64(restbuf + (size_t)list_len * sizeof(uint64_t));
+    off_t next = le_read_u64(restbuf + (size_t)list_len * sizeof(uint64_t));
     free(restbuf);
 
     /* fill node struct */

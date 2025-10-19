@@ -17,10 +17,10 @@ int index_open(index_handle_t *h, const char *buckets_path, const char *arrays_p
 void index_close(index_handle_t *h);
 
 /* Lookup key: returns array of offsets (malloc'd) and count via out_count. Caller frees *out_offsets. */
-int index_lookup(index_handle_t *h, const char *key, offset_t **out_offsets, uint32_t *out_count);
+int index_lookup(index_handle_t *h, const char *key, off_t **out_offsets, uint32_t *out_count);
 
 
 int lookup_by_title_author(index_handle_t *title_h, index_handle_t *author_h, const char *title_key,
-    const char *author_key, offset_t **out_offsets, uint32_t *out_count); // No implementado
+    const char *author_key, off_t **out_offsets, uint32_t *out_count); // No implementado
 
 #endif // READER_H
