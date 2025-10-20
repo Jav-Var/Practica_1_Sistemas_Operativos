@@ -16,24 +16,24 @@ mediante un sistema de indexación basado en una **Tabla Hash**, comunicando dos
 
 | Campo                   | Tipo de dato | Descripción |
 |--------------------------|--------------|--------------|
-| `title`                  | String       | Título del libro. |
-| `author_name`            | String       | Nombre del autor o autores. |
-| `image_url`              | String / URL | Enlace a la imagen de la portada del libro. |
-| `num_pages`              | Entero       | Número total de páginas del libro. |
-| `average_rating`         | Flotante     | Calificación promedio otorgada por los usuarios. |
-| `text_review_count`      | Entero       | Número total de reseñas escritas por los usuarios. |
-| `description`            | String       | Sinopsis o resumen del contenido del libro. |
-| `5_star_rating_counts`   | Entero       | Cantidad de calificaciones de 5 estrellas. |
-| `4_star_rating_counts`   | Entero       | Cantidad de calificaciones de 4 estrellas. |
-| `3_star_rating_counts`   | Entero       | Cantidad de calificaciones de 3 estrellas. |
-| `2_star_rating_counts`   | Entero       | Cantidad de calificaciones de 2 estrellas. |
-| `1_star_rating_counts`   | Entero       | Cantidad de calificaciones de 1 estrella. |
-| `total_rating_counts`    | Entero       | Total de calificaciones. |
-| `genres`                 | String       | Géneros literarios asociados al libro. |
+| `title`                  | Título del libro. |
+| `author_name`            | Nombre del autor o autores. |
+| `image_url`              | Enlace a la imagen de la portada del libro. |
+| `num_pages`              | Número total de páginas del libro. |
+| `average_rating`         | Calificación promedio otorgada por los usuarios. |
+| `text_review_count`      | Número total de reseñas escritas por los usuarios. |
+| `description`            | Sinopsis o resumen del contenido del libro. |
+| `5_star_rating_counts`   | Cantidad de calificaciones de 5 estrellas. |
+| `4_star_rating_counts`   | Cantidad de calificaciones de 4 estrellas. |
+| `3_star_rating_counts`   | Cantidad de calificaciones de 3 estrellas. |
+| `2_star_rating_counts`   | Cantidad de calificaciones de 2 estrellas. |
+| `1_star_rating_counts`   | Cantidad de calificaciones de 1 estrella. |
+| `total_rating_counts`    | Total de calificaciones. |
+| `genres`                 | Géneros literarios asociados al libro. |
 
 ## Criterios de búsqueda implementados
 
-Para esta práctica se utilizaron los campos *`title`* y *`author_name`* como criterios de búsqueda.
+Para esta práctica se utilizaron los campos *`title`* y *`author_name`* como criterios de búsqueda. El usuario puede buscar por cualquiera de los criterios o ambos para realizar la busqueda.
 
 ### 1. `title`
 El título del libro es el campo mas intuitivo y directo para buscar en el dataset. Al ser una cadena de texto, facilita la generación del valor hash, además, la probabilidad de que dos libros compartan el mismo título es baja.
