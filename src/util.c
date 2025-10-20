@@ -16,17 +16,6 @@ uint64_t next_pow2(uint64_t v) {
     return v;
 }
 
-char *trim_inplace(char *s) {
-    if (!s) return s;
-    char *end;
-    while (isspace((unsigned char)*s)) s++;
-    if (*s == 0) return s;
-    end = s + strlen(s) - 1;
-    while (end > s && isspace((unsigned char)*end)) end--;
-    end[1] = '\0';
-    return s;
-}
-
 /* normalized_strcmp: compares normalized versions of a and b.
  * returns same semantics as strcmp.
  * handles NULL pointers (treat as empty).
