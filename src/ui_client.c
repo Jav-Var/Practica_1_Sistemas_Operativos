@@ -65,7 +65,7 @@ int main() {
             else {
             printf("Se ingreso %s\n", t);
             }*/ // La interfaz queda mas limpia sin este mensaje
-            printf("Se ingreso %s\n", t ? t : "(vacio)");
+            //printf("Se ingreso %s\n", t ? t : "(vacio)");
             if (t && t[0] == '\0') { free(t); t = NULL; }
             free(current_title);
             current_title = t;

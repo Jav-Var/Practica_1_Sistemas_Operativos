@@ -1,5 +1,6 @@
 #include "hash.h"
 #include "util.h" 
+#include "common.h"
 #include <stdint.h>
 #include <stddef.h>
 #include <stdlib.h>

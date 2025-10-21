@@ -16,7 +16,7 @@
 #define INDEX_DIR "data/index"
 #define NUM_DATASET_FIELDS 14
 
-#define KEY_PREFIX_LEN 20
+#define KEY_PREFIX_LEN 14 // lenght for a matching search 
 
 /* safe IO wrappers */
 ssize_t safe_pread(int fd, void *buf, size_t count, off_t offset);

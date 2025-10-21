@@ -4,8 +4,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define KEY_PREFIX_LEN 20
-
 
 /* Compute 64-bit hash based on first up to HASH_KEY_PREFIX_LEN bytes */
 uint64_t hash_key_prefix(const char *key, size_t len, uint64_t seed);
