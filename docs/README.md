@@ -14,8 +14,8 @@ mediante un sistema de indexación basado en una **Tabla Hash**, comunicando dos
 
 ## Campos del dataset
 
-| Campo                   | Tipo de dato | Descripción |
-|--------------------------|--------------|--------------|
+| Campo                   | Descripción |
+|--------------------------|--------------|
 | `title`                  | Título del libro. |
 | `author_name`            | Nombre del autor o autores. |
 | `image_url`              | Enlace a la imagen de la portada del libro. |
@@ -46,12 +46,12 @@ El nombre del autor permite agrupar libros relacionados y facilita la búsqueda 
 ### 1. Titulo
 Para la construcción de la tabla hash se utilizaron los **primeros 20 caracteres del titulo** de cada libro como clave principal de indexación, esto facilita la busqueda de libros con titulos muy largos.
 
-Al realizar la consulta, el usuario puede ingresar cualquier cantidad de carácteres del título que desee buscar, el programa se encargará de calcular el valor hash correspondiente y localizar el registro mas cercano.
+Al realizar la consulta, el usuario puede ingresar cualquier cantidad de carácteres del título que desee buscar, el programa se encargará de calcular el valor hash correspondiente y localizar el registro correspondiente.
 
 ### 2. Autor
-Para la construcción de la tabla hash se utilizaron los **primero 20 caracteres del nombre del autor** de cada libro como clave principal de indexacion, esto permite mantener una buena distribucion dentro de la tabla.
+Para la construcción de la tabla hash se utilizaron los **primero 20 caracteres del nombre del autor** de cada libro como clave principal de indexacion. 
 
-Al realizar la consulta. el usuario puede ingresar cualquier cantidad de carácteres del autor que desee buscar, el programa se encargará de calcular el valor hash correspondiente y localizar el registro más cercano. 
+Al realizar la consulta. el usuario puede ingresar cualquier cantidad de carácteres del autor que desee buscar, el programa se encargará de calcular el valor hash correspondiente y localizar el registro correspondiente.
 
 ## Comunicación entre procesos (FIFO)
 El sistema implementa tuberías nombradas (FIFO) para la comunicación entre procesos no emparentados:
@@ -82,4 +82,5 @@ El sistema implementa tuberías nombradas (FIFO) para la comunicación entre pro
 
 ### Búsqueda con más de un resultado
 <img width="1810" height="937" alt="Captura desde 2025-10-13 17-32-23" src="https://github.com/user-attachments/assets/b0b67272-d036-4074-ba90-21649662125e" />
+
 
