@@ -3,14 +3,7 @@
 
 #include <stdint.h>
 
-/* Build a single index (index_name: "title" or "author") from combined CSV.
-   csv_path: path to combined_dataset.csv
-   out_dir: directory where to write index files; files will be:
-     out_dir/index_name_buckets.dat
-     out_dir/index_name_arrays.dat
-   num_buckets: number of buckets (must be power of two)
-   hash_seed: seed for hash_key prefix
-*/
+/* Functions for building the two index files from dataset CSV */
 
 int build_index_stream(const char *csv_path, const char *out_dir, const char *index_name, uint64_t num_buckets, uint64_t hash_seed);
 

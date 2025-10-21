@@ -11,7 +11,7 @@
 /* Header layout:
    offset 0: magic 4 bytes //
    offset 4: version uint16 //
-   offset 6: reserved uint16
+   offset 6: reserved uint16 //
    offset 8: page_size uint32
    offset 12: num_buckets uint64
    offset 20: hash_seed uint64

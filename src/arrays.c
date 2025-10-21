@@ -43,10 +43,6 @@ size_t arrays_calc_node_size(uint16_t key_len, uint32_t list_len) {
 /* append node: serialize into a buffer then write at EOF */
 off_t arrays_append_node(int fd, const arrays_node_t *node) {
     if (!node || !node->key) return 0;
-    if (node->key_len != (uint16_t)strlen(node->key)) {
-        /* ensure key_len consistent */
-        /* If mismatch, use strlen */
-    }
     uint16_t key_len = (uint16_t)strlen(node->key);
     if ((size_t)key_len != strlen(node->key)) {
         /* key too long for uint16 */

@@ -18,10 +18,7 @@
  * The file begins with a fixed-size header of ARRAYS_HEADER_SIZE bytes (reserved area).
  * Nodes should start at offsets >= ARRAYS_HEADER_SIZE; offset 0 is reserved/sentinel.
  *
- * This module exposes a struct (arrays_node_t) to represent a node in memory and
- * functions to append a node and to read a node into that struct.
  */
-
 
 typedef struct {
     uint16_t key_len;         

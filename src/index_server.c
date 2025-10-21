@@ -1,6 +1,6 @@
-// index_server.c - Mensajes localizados a español
 #define _GNU_SOURCE
 #include "util.h"
+#include "reader.h"
 #include "builder.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,15 +10,12 @@
 #include <sys/stat.h>
 #include <errno.h>
 
-#include "reader.h"    // index_handle_t, index_open, index_close
-// #include "builder.h" // si necesitas construir índices desde aquí
-// #include "your_index_api.h" // replace with your actual headers
-
+#define DEFAULT_HASH_SEED 0x12345678abcdefULL
 #define REQ_FIFO "/tmp/index_req.fifo"
 #define RSP_FIFO "/tmp/index_rsp.fifo"
 #define BUF_SZ 8192
 
-/* Helper: ensure FIFO exists */
+/* ensure pipe exists */
 static int ensure_fifo(const char *path) {
     struct stat st;
     if (stat(path, &st) == 0) {
@@ -35,7 +32,6 @@ static int ensure_fifo(const char *path) {
     return 0;
 }
 
-/* Read one line (up to newline) from fd into malloc'd buffer (caller frees) */
 static char *read_line_fd(int fd) {
     char *buf = malloc(BUF_SZ);
     if (!buf) return NULL;
@@ -43,12 +39,12 @@ static char *read_line_fd(int fd) {
     while (1) {
         ssize_t r = read(fd, buf + pos, 1);
         if (r <= 0) {
-            if (pos == 0) { free(buf); return NULL; } // EOF or error
+            if (pos == 0) { free(buf); return NULL; } 
             break;
         }
         if (buf[pos] == '\n') { buf[pos] = '\0'; return buf; }
         pos++;
-        if (pos + 1 >= BUF_SZ) break; // too long; truncate
+        if (pos + 1 >= BUF_SZ) break; // if too long, truncate
     }
     buf[pos] = '\0';
     return buf;
@@ -62,7 +58,6 @@ static int write_line_fd(int fd, const char *s) {
     return 0;
 }
 
-/* MAIN */
 int main() {
     const char *index_dir = INDEX_DIR;
     const char *csv_path = CSV_PATH;
@@ -94,7 +89,7 @@ int main() {
     if (need_build) {
         uint64_t num_buckets_title = next_pow2(4096);
         uint64_t num_buckets_author = next_pow2(4096);
-        uint64_t hash_seed = 0x12345678abcdefULL;
+        uint64_t hash_seed = DEFAULT_HASH_SEED;
         printf("Construyendo índices en '%s'...\n", INDEX_DIR);
         if (build_both_indices_stream(CSV_PATH, INDEX_DIR, num_buckets_title, num_buckets_author, hash_seed) != 0) {
             fprintf(stderr, "Fallo al construir los índices\n");

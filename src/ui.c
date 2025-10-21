@@ -146,11 +146,9 @@ char *getline_trimmed_stdin(void) {
         return NULL;
     }
     rtrim_newline(line);
-    /* trim leading spaces */
     char *s = line;
     while (*s && (*s == ' ' || *s == '\t')) s++;
     if (s != line) memmove(line, s, strlen(s) + 1);
-    /* trim trailing spaces */
     size_t L = strlen(line);
     while (L > 0 && (line[L-1] == ' ' || line[L-1] == '\t')) line[--L] = '\0';
     return line;

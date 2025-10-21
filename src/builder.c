@@ -37,7 +37,7 @@ static char *csv_get_field_copy(const char *line, int field_idx) {
             continue;
         }
     }
-    /* now extract field at idx == field_idx */
+    /* extract field at idx == field_idx */
     if (!*p) return strdup("");
     char *out = NULL;
     if (*p == '"') {
@@ -139,7 +139,7 @@ int build_index_stream(const char *csv_path, const char *out_dir, const char *in
         
         free(field);
 
-        uint64_t h = hash_key_prefix20(normalized_key, strlen(normalized_key), hash_seed);
+        uint64_t h = hash_key_prefix(normalized_key, strlen(normalized_key), hash_seed);
         uint64_t mask = num_buckets - 1;
         uint64_t bucket = bucket_id_from_hash(h, mask);
 

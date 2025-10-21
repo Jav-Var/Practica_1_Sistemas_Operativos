@@ -1,4 +1,5 @@
 #include "util.h"
+#include "common.h"
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -48,7 +49,7 @@ char *normalize_string(const char *s) {
     size_t i = 0;
     size_t out_idx = 0;
     
-    while (s[i] != '\0') {
+    while (s[i] != '\0' && i <= KEY_PREFIX_LEN) {
         unsigned char c1 = s[i];
 
         // Manejo de caracteres ASCII de 1 byte (los más comunes)
@@ -86,16 +87,15 @@ char *normalize_string(const char *s) {
                     out[out_idx++] = 'u';
                     break;
                 case 0x91: // Ñ
-                case 0xb1: // ñ -> CORREGIDO
+                case 0xb1: // ñ
                     out[out_idx++] = 'n';
                     break;
                 default:
                     // Si es un carácter UTF-8 que no manejamos, lo ignoramos
                     break;
             }
-            i += 2; // Avanzamos 2 bytes
+            i += 2;
         } else {
-            // Si es otro carácter multibyte que no reconocemos, lo ignoramos
             i++;
         }
     }

@@ -36,7 +36,7 @@ int index_lookup(index_handle_t *h, const char *key, off_t **out_offsets, uint32
     *out_offsets = NULL;
     *out_count = 0;
 
-    uint64_t hval = hash_key_prefix20(key, strlen(key), h->hash_seed);
+    uint64_t hval = hash_key_prefix(key, strlen(key), h->hash_seed);
     uint64_t mask = h->num_buckets - 1;
     uint64_t bucket = bucket_id_from_hash(hval, mask);
     off_t head = buckets_read_head(h->buckets_fd, h->num_buckets, bucket);
@@ -52,21 +52,18 @@ int index_lookup(index_handle_t *h, const char *key, off_t **out_offsets, uint32
     while (cur != 0) {
         arrays_node_t node = {0, NULL, 0, NULL, 0};
         if (arrays_read_node_full(h->arrays_fd, cur, &node) != 0) {
-            /* error reading node -> stop traversal and return what we have */
             break;
         }
 
         off_t next = node.next_ptr; /* save next before freeing node */
 
         if (node.key) {
-            /* case-sensitive comparison; change if you want case-insensitive */
             if (normalized_strcmp(node.key, key) == 0) {
                 for (uint32_t i = 0; i < node.list_len; ++i) {
                     if (cnt >= cap) {
                         uint32_t new_cap = cap * 2;
                         off_t *tmp = realloc(results, sizeof(off_t) * new_cap);
                         if (!tmp) {
-                            /* allocation failure: clean up and return error */
                             arrays_free_node(&node);
                             free(results);
                             return -1;
