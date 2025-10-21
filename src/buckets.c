@@ -9,8 +9,8 @@
 #include <sys/stat.h>
 
 /* Header layout:
-   offset 0: magic 4 bytes
-   offset 4: version uint16
+   offset 0: magic 4 bytes //
+   offset 4: version uint16 //
    offset 6: reserved uint16
    offset 8: page_size uint32
    offset 12: num_buckets uint64
@@ -30,12 +30,22 @@ int buckets_create(const char *path, uint64_t num_buckets, uint64_t hash_seed) {
     unsigned char header[BUCKETS_HEADER_SIZE];
     memset(header, 0, sizeof(header));
     memcpy(header + 0, INDEX_MAGIC, 4);
-    le_write_u16(header + 4, (uint16_t)INDEX_VERSION);
-    le_write_u16(header + 6, 0);
-    le_write_u32(header + 8, (uint32_t)BUCKETS_HEADER_SIZE);
-    le_write_u64(header + 12, num_buckets);
-    le_write_u64(header + 20, hash_seed);
-    le_write_u32(header + 28, (uint32_t)BUCKET_ENTRY_SIZE);
+
+    uint16_t v16;
+    uint32_t v32;
+    uint64_t v64;
+    v16 = (uint16_t)INDEX_VERSION;
+    memcpy(header + 4, &v16, sizeof(v16));
+    v16 = 0;
+    memcpy(header + 6, &v16, sizeof(v16));
+    v32 = (uint32_t)BUCKETS_HEADER_SIZE;
+    memcpy(header + 8, &v32, sizeof(v32));
+    v64 = (uint64_t)num_buckets;
+    memcpy(header + 12, &v64, sizeof(v64));
+    v64 = (uint64_t)hash_seed;
+    memcpy(header + 20, &v64, sizeof(v64));
+    v32 = (uint32_t)BUCKET_ENTRY_SIZE;
+    memcpy(header + 28, &v32, sizeof(v32));
 
     if (safe_pwrite(fd, header, BUCKETS_HEADER_SIZE, 0) != (ssize_t)BUCKETS_HEADER_SIZE) {
         close(fd);
@@ -84,8 +94,9 @@ int buckets_open_readwrite(const char *path, uint64_t *num_buckets_out, uint64_t
         close(fd);
         return -1;
     }
-    uint64_t num_buckets = le_read_u64(header + 12);
-    uint64_t hash_seed = le_read_u64(header + 20);
+    uint64_t num_buckets, hash_seed;
+    memcpy(&num_buckets, header + 12, sizeof num_buckets);
+    memcpy(&hash_seed,   header + 20, sizeof hash_seed);
     if (num_buckets_out) *num_buckets_out = num_buckets;
     if (hash_seed_out) *hash_seed_out = hash_seed;
     return fd;
@@ -100,14 +111,14 @@ off_t buckets_read_head(int fd, uint64_t num_buckets, uint64_t bucket_id) {
     off_t pos = buckets_entry_offset(bucket_id);
     unsigned char buf[8];
     if (safe_pread(fd, buf, 8, pos) != 8) return 0;
-    return le_read_u64(buf);
+    uint64_t v;
+    memcpy(&v, buf, sizeof v);
+    return (off_t)v;
 }
 
 int buckets_write_head(int fd, uint64_t num_buckets, uint64_t bucket_id, off_t head) {
     if (bucket_id >= num_buckets) return -1;
     off_t pos = buckets_entry_offset(bucket_id);
-    unsigned char buf[8];
-    le_write_u64(buf, head);
-    if (safe_pwrite(fd, buf, 8, pos) != 8) return -1;
+    if (safe_pwrite(fd, &head, 8, pos) != 8) return -1;
     return 0;
 }

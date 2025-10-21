@@ -60,7 +60,7 @@ off_t arrays_append_node(int fd, const arrays_node_t *node) {
     size_t pos = 0;
 
     /* key_len */
-    le_write_u16(buf + pos, key_len);
+    memcpy(buf + pos, &key_len, 2);
     pos += sizeof(uint16_t);
 
     /* key bytes (no NUL on disk) */
@@ -68,17 +68,17 @@ off_t arrays_append_node(int fd, const arrays_node_t *node) {
     pos += key_len;
 
     /* list_len */
-    le_write_u32(buf + pos, list_len);
+    memcpy(buf + pos, &list_len, 4);
     pos += sizeof(uint32_t);
 
     /* offsets array */
     for (uint32_t i = 0; i < list_len; ++i) {
-        le_write_u64(buf + pos, node->offsets[i]);
-        pos += sizeof(uint64_t);
+        memcpy(buf + pos, &node->offsets[i], sizeof node->offsets[i]);
+        pos += sizeof node->offsets[i];
     }
 
     /* next_ptr */
-    le_write_u64(buf + pos, node->next_ptr);
+    memcpy(buf + pos, &node->next_ptr, sizeof node->next_ptr);
     pos += sizeof(uint64_t);
 
     /* compute offset at EOF */
@@ -103,9 +103,8 @@ off_t arrays_append_node(int fd, const arrays_node_t *node) {
 // reads the node data in an offset to a struct (arrays_node_t)
 int arrays_read_node_full(int fd, off_t node_off, arrays_node_t *node) {
     if (!node) return -1;
-    unsigned char tmp2[sizeof(uint16_t)];
-    if (safe_pread(fd, tmp2, sizeof(uint16_t), node_off) != (ssize_t)sizeof(uint16_t)) return -1;
-    uint16_t key_len = le_read_u16(tmp2);
+    uint16_t key_len;
+    if (safe_pread(fd, &key_len, sizeof(uint16_t), node_off) != (ssize_t)sizeof(uint16_t)) return -1;
 
     /* read key bytes and list_len (key_len + sizeof(list_len)) */
     size_t head_read = (size_t)key_len + sizeof(uint32_t);
@@ -122,7 +121,8 @@ int arrays_read_node_full(int fd, off_t node_off, arrays_node_t *node) {
     memcpy(key, headbuf, key_len);
     key[key_len] = '\0';
 
-    uint32_t list_len = le_read_u32(headbuf + key_len);
+    uint32_t list_len;
+    memcpy(&list_len, headbuf + key_len, sizeof list_len);
     free(headbuf);
 
     /* read offsets and next_ptr */
@@ -135,8 +135,6 @@ int arrays_read_node_full(int fd, off_t node_off, arrays_node_t *node) {
             free(key); free(restbuf); return -1;
         }
     } else {
-        /* Shouldn't happen (list_len == 0 means rest_bytes == 8 for next_ptr),
-           but handle generically */
         restbuf = malloc(sizeof(uint64_t));
         if (!restbuf) { free(key); return -1; }
         if (safe_pread(fd, restbuf, sizeof(uint64_t), node_off + sizeof(uint16_t) + key_len + sizeof(uint32_t)) != (ssize_t)sizeof(uint64_t)) {
@@ -149,11 +147,13 @@ int arrays_read_node_full(int fd, off_t node_off, arrays_node_t *node) {
         offsets = malloc(sizeof(off_t) * list_len);
         if (!offsets) { free(key); free(restbuf); return -1; }
         for (uint32_t i = 0; i < list_len; ++i) {
-            offsets[i] = le_read_u64(restbuf + (size_t)i * sizeof(uint64_t));
+            memcpy(&offsets[i], restbuf + (size_t)i * 8, sizeof offsets[i]);
         }
     }
 
-    off_t next = le_read_u64(restbuf + (size_t)list_len * sizeof(uint64_t));
+    uint64_t tmp;
+    memcpy(&tmp, restbuf + (size_t)list_len * sizeof(uint64_t), sizeof tmp);
+    off_t next = (off_t)tmp;
     free(restbuf);
 
     /* fill node struct */

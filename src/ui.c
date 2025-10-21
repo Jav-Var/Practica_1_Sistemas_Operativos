@@ -10,10 +10,6 @@
 #include <errno.h>
 #include <stdbool.h>
 
-#define REQ_FIFO "/tmp/index_req.fifo"
-#define RSP_FIFO "/tmp/index_rsp.fifo"
-#define MAX_LINE 8192
-
 /* Trim trailing newline/carriage return */
 void rtrim_newline(char *s) {
     if (!s) return;
