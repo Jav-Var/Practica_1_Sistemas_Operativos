@@ -36,7 +36,7 @@ mediante un sistema de indexación basado en una **Tabla Hash**, comunicando dos
 Para esta práctica se utilizaron los campos *`title`* y *`author_name`* como criterios de búsqueda. El usuario puede buscar por cualquiera de los criterios o ambos para realizar la busqueda.
 
 ### 1. `title`
-El título del libro es el campo mas intuitivo y directo para buscar en el dataset. Al ser una cadena de texto, facilita la generación del valor hash, además, la probabilidad de que dos libros compartan el mismo título es baja.
+El título del libro es el campo mas intuitivo y directo para buscar en el dataset.
 
 ### 2. `author_name`
 El nombre del autor permite agrupar libros relacionados y facilita la búsqueda entre obras de un mismo autor. Este sirve como segundo criterio en casos donde existan titulos similares o repetidos.
@@ -82,3 +82,4 @@ El sistema implementa tuberías nombradas (FIFO) para la comunicación entre pro
 
 ### Búsqueda con más de un resultado
 <img width="1810" height="937" alt="Captura desde 2025-10-13 17-32-23" src="https://github.com/user-attachments/assets/b0b67272-d036-4074-ba90-21649662125e" />
+
